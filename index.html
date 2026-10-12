@@ -1046,29 +1046,25 @@ updateUI();
 </script>
 
 <script type="module">
-  // Import the Core, Analytics, and Realtime Database functions
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-analytics.js";
-  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com";
+  import { initializeApp } from "https://gstatic.com";
+  import { getAnalytics } from "https://gstatic.com";
+  import { getDatabase, ref, set, onValue } from "https://gstatic.com";
 
-  // Your web app's Firebase configuration
   const firebaseConfig = {
     apiKey: "AIzaSyBSo3GMBnLzfV5svZRBU8nAWq837TZH0ic",
-    authDomain: "the-great-battle-d675b.firebaseapp.com",
+    authDomain: "://firebaseapp.com",
     projectId: "the-great-battle-d675b",
     storageBucket: "the-great-battle-d675b.firebasestorage.app",
     messagingSenderId: "272825915387",
     appId: "1:272825915387:web:9d59e388e050f57fa99d5e",
     measurementId: "G-MNH4XZVEDF",
-    databaseURL: "https://firebasedatabase.app""
+    databaseURL: "https://firebasedatabase.app"
   };
 
-  // Initialize Firebase connections
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
   const database = getDatabase(app);
 
-  // Function to save data to your Firebase Dashboard
   window.savePlayerData = function(playerName, currentMoney, ownedPlanes) {
     set(ref(database, 'players/' + playerName), {
       money: currentMoney,
@@ -1077,26 +1073,19 @@ updateUI();
     });
   }
 
-  // Function to listen for updates you make manually in Firebase
   window.listenToPlayerChanges = function(playerName) {
     const playerRef = ref(database, 'players/' + playerName);
     onValue(playerRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         console.log("Live update from database received!", data);
-        // If your game updates global variables, update them here:
-        // playerMoney = data.money; 
-        // if(typeof updateUI === "function") updateUI();
       }
     });
   }
 
-  // TEST RUN: This automatically executes to force data into your dashboard for verification
   window.savePlayerData("TestPilot", 500, ["Basic Biplane"]);
   window.listenToPlayerChanges("TestPilot");
-
 </script>
 
-  
 </body>
 </html>
