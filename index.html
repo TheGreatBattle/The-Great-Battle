@@ -1046,45 +1046,28 @@ updateUI();
 </script>
 
 <script type="module">
-  import { initializeApp } from "https://gstatic.com";
-  import { getAnalytics } from "https://gstatic.com";
-  import { getDatabase, ref, set, onValue } from "https://gstatic.com";
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
 
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
   const firebaseConfig = {
     apiKey: "AIzaSyBSo3GMBnLzfV5svZRBU8nAWq837TZH0ic",
-    authDomain: "://firebaseapp.com",
+    authDomain: "the-great-battle-d675b.firebaseapp.com",
+    databaseURL: "https://the-great-battle-d675b-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "the-great-battle-d675b",
     storageBucket: "the-great-battle-d675b.firebasestorage.app",
     messagingSenderId: "272825915387",
     appId: "1:272825915387:web:9d59e388e050f57fa99d5e",
-    measurementId: "G-MNH4XZVEDF",
-    databaseURL: "https://firebasedatabase.app"
+    measurementId: "G-MNH4XZVEDF"
   };
 
+  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
-  const database = getDatabase(app);
-
-  window.savePlayerData = function(playerName, currentMoney, ownedPlanes) {
-    set(ref(database, 'players/' + playerName), {
-      money: currentMoney,
-      planes: ownedPlanes,
-      lastActive: new Date().toISOString()
-    });
-  }
-
-  window.listenToPlayerChanges = function(playerName) {
-    const playerRef = ref(database, 'players/' + playerName);
-    onValue(playerRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        console.log("Live update from database received!", data);
-      }
-    });
-  }
-
-  window.savePlayerData("TestPilot", 500, ["Basic Biplane"]);
-  window.listenToPlayerChanges("TestPilot");
 </script>
 
 </body>
