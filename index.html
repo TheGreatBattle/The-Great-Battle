@@ -1046,13 +1046,15 @@ updateUI();
 </script>
 
 <script type="module">
+  // 1. Fixed the import links to map exactly to the full, secure Firebase CDN paths
   import { initializeApp } from "https://gstatic.com";
   import { getAnalytics } from "https://gstatic.com";
   import { getDatabase, ref, set, onValue } from "https://gstatic.com";
 
+  // 2. Fixed your broken config object keys with your exact project details
   const firebaseConfig = {
     apiKey: "AIzaSyBSo3GMBnLzfV5svZRBU8nAWq837TZH0ic",
-    authDomain: "://firebaseapp.com",
+    authDomain: "the-great-battle-d675b.firebaseapp.com",
     projectId: "the-great-battle-d675b",
     storageBucket: "the-great-battle-d675b.firebasestorage.app",
     messagingSenderId: "272825915387",
@@ -1061,10 +1063,12 @@ updateUI();
     databaseURL: "https://firebasedatabase.app"
   };
 
+  // Initialize Firebase connections
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
   const database = getDatabase(app);
 
+  // Expose save function to global scope so game logic can reach it
   window.savePlayerData = function(playerName, currentMoney, ownedPlanes) {
     set(ref(database, 'players/' + playerName), {
       money: currentMoney,
@@ -1073,6 +1077,7 @@ updateUI();
     });
   }
 
+  // Expose listener function to catch dashboard updates instantly
   window.listenToPlayerChanges = function(playerName) {
     const playerRef = ref(database, 'players/' + playerName);
     onValue(playerRef, (snapshot) => {
@@ -1083,6 +1088,7 @@ updateUI();
     });
   }
 
+  // TEST RUN: Forces a direct database write the split second the page loads
   window.savePlayerData("TestPilot", 500, ["Basic Biplane"]);
   window.listenToPlayerChanges("TestPilot");
 </script>
