@@ -1,6 +1,6 @@
 import { initializeApp } from "gstatic.com";
 import { getDatabase, ref, set, onValue, onDisconnect, push, remove } from "gstatic.com";
-
+import { GLTFLoader } from "supermarine_spitfire.glb";
 const firebaseConfig = {
 apiKey: "AIzaSyBSo3GMBnLzfV5svZRBU8nAWq837TZH0ic",
 authDomain: "firebaseapp.com",
@@ -10,15 +10,12 @@ messagingSenderId: "272825915387",
 appId: "1:272825915387:web:9d59e388e050f57fa99d5e",
 databaseURL: "firebaseio.com"
 };
-
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const sessionId = "Pilot_" + Math.floor(Math.random() * 9000 + 1000);
 const playerNetworkRef = ref(database, 'matchmaking/arena/' + sessionId);
 const globalMatchRef = ref(database, 'matchmaking/arena');
 const projectilestreamRef = ref(database, 'matchmaking/projectiles');
-
-
 onDisconnect(playerNetworkRef).remove();
 const AIRCRAFT_REGISTRY = [
 { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, color: 0x7a8b99, unlocked: true, desc: "High velocity escort fighter with heavy dive contours." },
@@ -34,19 +31,28 @@ let activeNationFilter = "USA";
 let gameStateMode = "hangar";
 let scene, camera, renderer, hangarPlaneModel, simulationFloorGrid;
 let localFlightPhysicsVehicleObject;
+let cachedPlaneModel = null;
 const onlineNetVisualPlanesMap = {};
 const localActiveProjectilesArray = [];
 const playerControlInputVectors = { w: false, s: false, a: false, d: false, space: false };
 let currentVehicleHP = 100;
 function initializeAppCore() {
 const container = document.getElementById("canvas-container");
+const gltfLoader = new GLTFLoader();
+gltfLoader.load("my_plane.glb", (gltf) => {
+cachedPlaneModel = gltf.scene;
+continueInitialization();
+}, undefined, (error) => {
+console.error("GLTF load failed, using box fallback", error);
+continueInitialization();
+});
+function continueInitialization() {
 scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0e1318);
 camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
 renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
-
 const ambient = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambient);
 const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -64,21 +70,26 @@ renderResearchTreeMatrix();
 updateUIFields();
 animateEngineFrame();
 }
+}
 function assemblePixelatedAeroMesh(colorHex) {
 const airplaneCompositeGroup = new THREE.Group();
-const structureMaterial = new THREE.MeshLambertMaterial({ color: colorHex });
-
-const noseGeometry = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.8), new THREE.MeshLambertMaterial({ color: 0x222222 }));
-noseGeometry.position.z = 1.8;
-airplaneCompositeGroup.add(noseGeometry);
-const fuselageMesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 3.0), structureMaterial);
-airplaneCompositeGroup.add(fuselageMesh);
-const portWingsMesh = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.08, 0.9), structureMaterial);
-portWingsMesh.position.set(0, -0.1, 0.3);
-airplaneCompositeGroup.add(portWingsMesh);
-const verticalTailMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, 0.6), structureMaterial);
-verticalTailMesh.position.set(0, 0.7, -1.2);
-airplaneCompositeGroup.add(verticalTailMesh);
+if (cachedPlaneModel) {
+const modelClone = cachedPlaneModel.clone();
+modelClone.traverse((child) => {
+if (child.isMesh && child.material.map) {
+child.material.map.magFilter = THREE.NearestFilter;
+child.material.map.minFilter = THREE.NearestFilter;
+child.material.map.needsUpdate = true;
+}
+});
+airplaneCompositeGroup.add(modelClone);
+} else {
+const fallbackBox = new THREE.Mesh(
+new THREE.BoxGeometry(1, 1, 3),
+new THREE.MeshLambertMaterial({ color: colorHex })
+);
+airplaneCompositeGroup.add(fallbackBox);
+}
 return airplaneCompositeGroup;
 }
 function updateHangarShowcaseModel() {
@@ -289,7 +300,6 @@ dir: { x: projectileForwardVectorMat.x, y: projectileForwardVectorMat.y, z: proj
 timestamp: Date.now()
 });
 }
-
 function spawnTracerProjectile(originPos, vectorDir, ownerId) {
 const tracerBoxGeo = new THREE.BoxGeometry(0.08, 0.08, 0.6);
 const tracerMat = new THREE.MeshBasicMaterial({
@@ -382,7 +392,6 @@ timeNonce: Date.now()
 }
 });
 }
-
 if (bullet.age >= bullet.maxAge) {
 scene.remove(bullet.mesh);
 localActiveProjectilesArray.splice(i, 1);
@@ -393,11 +402,9 @@ position: { x: localFlightPhysicsVehicleObject.position.x, y: localFlightPhysics
 rotation: { x: localFlightPhysicsVehicleObject.rotation.x, y: localFlightPhysicsVehicleObject.rotation.y, z: localFlightPhysicsVehicleObject.rotation.z },
 heartbeat: Date.now()
 });
-
 document.getElementById('hud-spd').innerText = Math.round(baseVelocityVectorMag * 1200);
 document.getElementById('hud-alt').innerText = Math.round(localFlightPhysicsVehicleObject.position.y + 50);
 }
 renderer.render(scene, camera);
 }
 window.addEventListener('DOMContentLoaded', initializeAppCore);
-
