@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Great Battle</title>
+    <script src="https://cloudflare.com"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #07090b; font-family: 'Arial', sans-serif; color: #dcdcdc; user-select: none; }
+        #canvas-container { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding: 15px; }
+        .interactive { pointer-events: auto; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to bottom, rgba(16,22,26,0.95), rgba(10,14,18,0.7)); border-bottom: 2px solid #3c4852; padding: 10px 20px; }
+        .game-logo { font-weight: 900; font-style: italic; font-size: 22px; color: #e1b214; text-shadow: 2px 2px #000; }
+        .currencies { display: flex; gap: 20px; font-weight: bold; font-size: 14px; }
+        .silver-lions { color: #b0c4de; } .golden-eagles { color: #f3a611; }
+        .nav-tabs { display: flex; gap: 5px; margin: 0 auto; }
+        .tab-btn { background: rgba(30,41,51,0.7); border: 1px solid #4c5d6b; color: #9bb1c4; padding: 8px 24px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 12px; }
+        .tab-btn.active { background: #962116; border-color: #d13628; color: white; }
+        .window-content { display: flex; height: calc(100vh - 230px); margin-top: 10px; gap: 15px; }
+        .panel { background: rgba(11, 16, 21, 0.88); border: 1px solid #2d3b45; border-top: 3px solid #5a6e7c; padding: 15px; box-sizing: border-box; overflow-y: auto; }
+        .left-spec-card { width: 320px; display: flex; flex-direction: column; gap: 8px; }
+        .plane-title { font-size: 24px; font-weight: 800; color: #fff; text-transform: uppercase; }
+        .nation-badge { font-size: 11px; font-weight: bold; background: #22313d; padding: 2px 6px; border-radius: 3px; color: #8bb2d4; width: fit-content; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 2px; border-bottom: 1px dashed rgba(255,255,255,0.06); }
+        .stat-val { font-weight: bold; color: #4ba3e3; }
+        .center-display { flex: 1; display: none; }
+        .center-display.active { display: block; }
+        .nation-selector { display: flex; gap: 4px; margin-bottom: 15px; }
+        .nation-tab { background: #162026; border: 1px solid #2d3b45; color: #738a9c; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .nation-tab.active { background: #2d3e4a; color: #fff; }
+        .tech-tree-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .research-node { background: linear-gradient(135deg, #1c262e, #11181d); border: 1px solid #3d4e5c; padding: 10px; border-radius: 4px; cursor: pointer; }
+        .research-node.unlocked { border-left: 4px solid #42a136; }
+        .research-node.locked { opacity: 0.5; cursor: not-allowed; }
+        .battle-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+        .to-battle-btn { background: linear-gradient(to bottom, #d13224, #80130b); border: 2px solid #ff4e3d; color: white; font-size: 26px; font-weight: 900; font-style: italic; padding: 12px 70px; cursor: pointer; text-shadow: 2px 2px 4px #000; text-transform: uppercase; }
+        .crew-carousel { width: 100%; height: 95px; background: linear-gradient(to top, rgba(8,12,15,0.98), rgba(15,22,28,0.85)); border-top: 2px solid #2e3b45; display: flex; justify-content: center; align-items: center; gap: 10px; padding: 10px; box-sizing: border-box; }
+        .crew-slot { width: 160px; height: 100%; background: #141c22; border: 1px solid #34434f; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; }
+        .crew-slot.active { border-color: #d13628; background: #1d2830; }
+        .crew-lvl { font-size: 10px; color: #f3a611; font-weight: bold; }
+        .crew-plane { font-size: 13px; font-weight: bold; color: #fff; }
+        #flight-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; flex-direction: column; justify-content: space-between; padding: 25px; box-sizing: border-box; font-family: monospace; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 2px #000; }
+        .hud-left-telemetry { color: #53ff53; font-size: 16px; line-height: 1.4em; }
+        .hud-center-crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; border: 2px solid #53ff53; border-radius: 50%; }
+        .combat-log { position: absolute; top: 20%; right: 25px; width: 320px; max-height: 180px; overflow: hidden; display: flex; flex-direction: column-reverse; gap: 4px; font-size: 12px; color: #ff6c6c; text-align: right; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="flight-hud">
+        <div class="hud-left-telemetry">
+            SPD: <span id="hud-spd">0</span> km/h<br>
+            ALT: <span id="hud-alt">0</span> m<br>
+            THR: <span id="hud-thr">100</span> %<br>
+            WEAPON: <span style="color: #ffaa00;">20mm CANNON</span><br>
+            HEALTH: <span id="hud-hp" style="color: #53ff53;">100%</span>
+        </div>
+        <div class="hud-center-crosshair"></div>
+        <div class="combat-log" id="combat-feed"></div>
+        <div style="color: #ffaa00; font-size: 14px; text-align: center; width: 100%; margin-bottom: 20px;" class="interactive">
+            [ESC] to Leave Match
+            <button onclick="exitToHangar()" style="background: rgba(0,0,0,0.6); color: red; border: 1px solid red; padding: 4px 8px; cursor: pointer; margin-left: 10px;">ABANDON</button>
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div class="top-bar interactive">
+            <div class="game-logo">PIXEL THUNDER</div>
+            <div class="nav-tabs">
+                <button id="btn-tab-hangar" class="tab-btn active" onclick="switchHangarTab('hangar')">Hangar</button>
+                <button id="btn-tab-research" class="tab-btn" onclick="switchHangarTab('research')">Research Tree</button>
+                <button id="btn-tab-crew" class="tab-btn" onclick="switchHangarTab('crew')">Crew Training</button>
+            </div>
+            <div class="currencies">
+                <span class="silver-lions">🦁 <span id="sl-val">75,000</span> SL</span>
+                <span class="golden-eagles">🦅 <span id="ge-val">490</span> GE</span>
+            </div>
+        </div>
+
+        <div class="window-content">
+            <div class="panel left-spec-card interactive">
+                <div class="plane-title" id="card-name">---</div>
+                <div class="nation-badge" id="card-nation">---</div>
+                <div style="margin: 10px 0; font-size: 12px; color: #a1b5c4;" id="card-desc">---</div>
+                <div class="stat-row"><span>BR Rating:</span><span class="stat-val" id="card-br">-</span></div>
+                <div class="stat-row"><span>Max Velocity:</span><span class="stat-val" id="card-maxspd">-</span></div>
+                <div class="stat-row"><span>Turn Radius:</span><span class="stat-val" id="card-turn">-</span></div>
+                <div class="stat-row"><span>Climb Speed:</span><span class="stat-val" id="card-climb">-</span></div>
+            </div>
+
+            <div id="tab-research" class="panel center-display interactive">
+                <div class="nation-selector">
+                    <button class="nation-tab active" id="ntab-USA" onclick="filterTreeNation('USA')">USA</button>
+                    <button class="nation-tab" id="ntab-GER" onclick="filterTreeNation('GER')">GERMANY</button>
+                    <button class="nation-tab" id="ntab-USSR" onclick="filterTreeNation('USSR')">USSR</button>
+                    <button class="nation-tab" id="ntab-UK" onclick="filterTreeNation('UK')">BRITAIN</button>
+                </div>
+                <div class="tech-tree-grid" id="tree-grid-target"></div>
+            </div>
+
+            <div id="tab-crew" class="panel center-display interactive">
+                <h3>Crew Training Center</h3>
+                <div class="stat-row" style="background: #162026; padding: 10px; margin-top:10px;">
+                    <span>G-Tolerance Training:</span>
+                    <button onclick="buyCrewUpgrade()" style="background:#42a136; border:none; color:white; padding:4px 10px; cursor:pointer;">Upgrade (-5000 SL)</button>
+                </div>
+            </div>
+
+            <div id="tab-hangar" class="center-display active battle-center">
+                <button class="to-battle-btn interactive" onclick="launchToBattle()">To Battle</button>
+            </div>
+        </div>
+
+        <div class="crew-carousel interactive" id="fleet-carousel-slots"></div>
+    </div>
+
+    <!-- Link the logic script engine safely -->
+    <script type="module" src="game.js"></script>
+</body>
+</html>
