@@ -22,12 +22,12 @@ const projectilestreamRef = ref(database, 'matchmaking/projectiles');
 onDisconnect(playerNetworkRef).remove();
 
 const AIRCRAFT_REGISTRY = [
-    { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, color: 0x7a8b99, unlocked: true, desc: "High velocity escort fighter with heavy dive contours." },
-    { id: "f4u", name: "F4U-1D Corsair", nation: "USA", br: 3.7, speed: 671, turn: 22.0, climb: 13.2, cost: 12000, color: 0x1c2d42, unlocked: false, desc: "Carrier fighter sporting unique inverted gull wings." },
-    { id: "bf109", name: "Bf 109 G-6", nation: "GER", br: 4.7, speed: 640, turn: 20.0, climb: 19.5, cost: 0, color: 0x545c52, unlocked: true, desc: "Interception master with devastating nose cannon configuration." },
-    { id: "fw190", name: "Fw 190 A-5", nation: "GER", br: 5.0, speed: 660, turn: 23.5, climb: 15.0, cost: 18000, color: 0x3d3f3c, unlocked: false, desc: "Heavy firepower platform providing excellent roll stability." },
-    { id: "yak3", name: "Yak-3 Fighter", nation: "USSR", br: 4.3, speed: 655, turn: 18.5, climb: 18.0, cost: 0, color: 0x6e786c, unlocked: true, desc: "Light frame configuration optimized for agile dogfights." },
-    { id: "spitfire", name: "Spitfire Mk IX", nation: "UK", br: 4.3, speed: 595, turn: 16.0, climb: 16.5, cost: 0, color: 0x4d5946, unlocked: true, desc: "Elliptical wing design giving tighter horizontal turn rates." }
+    { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, color: 0x7a8b99, unlocked: true, modelPath: "models/p51.glb", desc: "High velocity escort fighter with heavy dive contours." },
+    { id: "f4u", name: "F4U-1D Corsair", nation: "USA", br: 3.7, speed: 671, turn: 22.0, climb: 13.2, cost: 12000, color: 0x1c2d42, unlocked: false, modelPath: "models/f4u.glb", desc: "Carrier fighter sporting unique inverted gull wings." },
+    { id: "bf109", name: "Bf 109 G-6", nation: "GER", br: 4.7, speed: 640, turn: 20.0, climb: 19.5, cost: 0, color: 0x545c52, unlocked: true, modelPath: "models/bf109.glb", desc: "Interception master with devastating nose cannon configuration." },
+    { id: "fw190", name: "Fw 190 A-5", nation: "GER", br: 5.0, speed: 660, turn: 23.5, climb: 15.0, cost: 18000, color: 0x3d3f3c, unlocked: false, modelPath: "models/fw190.glb", desc: "Heavy firepower platform providing excellent roll stability." },
+    { id: "yak3", name: "Yak-3 Fighter", nation: "USSR", br: 4.3, speed: 655, turn: 18.5, climb: 18.0, cost: 0, color: 0x6e786c, unlocked: true, modelPath: "models/yak3.glb", desc: "Light frame configuration optimized for agile dogfights." },
+    { id: "spitfire", name: "Spitfire Mk IX", nation: "UK", br: 4.3, speed: 595, turn: 16.0, climb: 16.5, cost: 0, color: 0x4d5946, unlocked: true, modelPath: "models/spitfire.glb", desc: "Elliptical wing design giving tighter horizontal turn rates." }
 ];
 
 let economy = { sl: 75000, ge: 490 };
@@ -36,81 +36,72 @@ let activeNationFilter = "USA";
 let gameStateMode = "hangar";
 let scene, camera, renderer, hangarPlaneModel, grassTerrainPlane;
 let localFlightPhysicsVehicleObject;
-let cachedPlaneModel = null;
+let loadedPlaneModelsCache = {};
 const onlineNetVisualPlanesMap = {};
-const aiBotPlanesArray = [];
+const activeAiBots = [];
 const localActiveProjectilesArray = [];
 const playerControlInputVectors = { w: false, s: false, a: false, d: false, space: false };
 let currentVehicleHP = 100;
 
 function initializeAppCore() {
-    const container = document.getElementById("canvas-container");
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.load("my_plane.glb", (gltf) => {
-        cachedPlaneModel = gltf.scene;
-        continueInitialization();
-    }, undefined, (error) => {
-        console.warn("GLTF load skipped, using box fallback", error);
-        continueInitialization();
-    });
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x6ba4e8);
+    scene.fog = new THREE.FogExp2(0x8cb8e8, 0.0008);
 
-    function continueInitialization() {
-        scene = new THREE.Scene();
-        // War Thunder Blue Sky Atmosphere
-        scene.background = new THREE.Color(0x6ba4e8);
-        scene.fog = new THREE.FogExp2(0x8cb8e8, 0.0008);
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.getElementById("canvas-container").appendChild(renderer.domElement);
 
-        camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        container.appendChild(renderer.domElement);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambient);
+    const sunLight = new THREE.DirectionalLight(0xfffaed, 1.1);
+    sunLight.position.set(200, 400, 200);
+    scene.add(sunLight);
 
-        const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambient);
-        const sunLight = new THREE.DirectionalLight(0xfffaed, 1.1);
-        sunLight.position.set(200, 400, 200);
-        scene.add(sunLight);
+    const terrainGeo = new THREE.PlaneGeometry(8000, 8000);
+    const terrainMat = new THREE.MeshLambertMaterial({ color: 0x3d6b38 });
+    grassTerrainPlane = new THREE.Mesh(terrainGeo, terrainMat);
+    grassTerrainPlane.rotation.x = -Math.PI / 2;
+    grassTerrainPlane.position.y = -50;
+    scene.add(grassTerrainPlane);
 
-        // Grass Terrain Plane
-        const terrainGeo = new THREE.PlaneGeometry(8000, 8000);
-        const terrainMat = new THREE.MeshLambertMaterial({ color: 0x3d6b38 });
-        grassTerrainPlane = new THREE.Mesh(terrainGeo, terrainMat);
-        grassTerrainPlane.rotation.x = -Math.PI / 2;
-        grassTerrainPlane.position.y = -50;
-        scene.add(grassTerrainPlane);
-
-        updateHangarShowcaseModel();
-        window.addEventListener('keydown', (e) => handleKeyToggle(e, true));
-        window.addEventListener('keyup', (e) => handleKeyToggle(e, false));
-        window.addEventListener('resize', onWindowResizeHandler);
-        renderActiveFleetSlots();
-        renderResearchTreeMatrix();
-        updateUIFields();
-        animateEngineFrame();
-    }
+    updateHangarShowcaseModel();
+    window.addEventListener('keydown', (e) => handleKeyToggle(e, true));
+    window.addEventListener('keyup', (e) => handleKeyToggle(e, false));
+    window.addEventListener('resize', onWindowResizeHandler);
+    renderActiveFleetSlots();
+    renderResearchTreeMatrix();
+    updateUIFields();
+    animateEngineFrame();
 }
 
-function assemblePixelatedAeroMesh(colorHex) {
-    const airplaneCompositeGroup = new THREE.Group();
-    if (cachedPlaneModel) {
-        const modelClone = cachedPlaneModel.clone();
-        airplaneCompositeGroup.add(modelClone);
-    } else {
+function loadAircraftModel(plane, callback) {
+    if (loadedPlaneModelsCache[plane.id]) {
+        callback(loadedPlaneModelsCache[plane.id].clone());
+        return;
+    }
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load(plane.modelPath, (gltf) => {
+        loadedPlaneModelsCache[plane.id] = gltf.scene;
+        callback(gltf.scene.clone());
+    }, undefined, (error) => {
         const fallbackBox = new THREE.Mesh(
             new THREE.BoxGeometry(1.2, 0.8, 3.5),
-            new THREE.MeshLambertMaterial({ color: colorHex })
+            new THREE.MeshLambertMaterial({ color: plane.color })
         );
-        airplaneCompositeGroup.add(fallbackBox);
-    }
-    return airplaneCompositeGroup;
+        callback(fallbackBox);
+    });
 }
 
 function updateHangarShowcaseModel() {
     if (hangarPlaneModel) scene.remove(hangarPlaneModel);
     if (gameStateMode !== "hangar") return;
-    hangarPlaneModel = assemblePixelatedAeroMesh(activeSelectedAircraft.color);
-    scene.add(hangarPlaneModel);
+    loadAircraftModel(activeSelectedAircraft, (model) => {
+        hangarPlaneModel = model;
+        scene.add(hangarPlaneModel);
+    });
     camera.position.set(3.5, 2.0, 5.0);
     camera.lookAt(0, 0, 0);
 }
@@ -217,39 +208,53 @@ window.launchToBattle = function() {
     document.getElementById('flight-hud').style.display = 'flex';
     if (hangarPlaneModel) scene.remove(hangarPlaneModel);
     
-    localFlightPhysicsVehicleObject = assemblePixelatedAeroMesh(activeSelectedAircraft.color);
-    localFlightPhysicsVehicleObject.position.set(0, 180, 0);
-    scene.add(localFlightPhysicsVehicleObject);
+    loadAircraftModel(activeSelectedAircraft, (model) => {
+        localFlightPhysicsVehicleObject = model;
+        localFlightPhysicsVehicleObject.position.set(0, 180, 0);
+        scene.add(localFlightPhysicsVehicleObject);
+    });
 
     currentVehicleHP = 100;
     document.getElementById('hud-hp').innerText = "100%";
     document.getElementById('hud-hp').style.color = "#3fb950";
 
-    // Spawn AI Enemy & Allied Bots for Arcade Dogfighting
     spawnAiSquadron();
     setupMultiplayerNetworkStream();
 };
 
 function spawnAiSquadron() {
-    // Clear old bots
-    aiBotPlanesArray.forEach(bot => scene.remove(bot.mesh));
-    aiBotPlanesArray.length = 0;
+    activeAiBots.forEach(bot => scene.remove(bot.mesh));
+    activeAiBots.length = 0;
 
-    for (let i = 0; i < 3; i++) {
-        const botMesh = assemblePixelatedAeroMesh(0xbb3333);
-        botMesh.position.set(
-            (Math.random() - 0.5) * 600,
-            150 + Math.random() * 100,
-            -300 - Math.random() * 300
+    const botTypes = [
+        { name: "Bf 109 Bot", color: 0x3d3f3c },
+        { name: "Fw 190 Bot", color: 0x545c52 }
+    ];
+
+    for (let i = 0; i < 4; i++) {
+        const selectedType = botTypes[i % botTypes.length];
+        const botGroup = new THREE.Group();
+        const coreBody = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 0.8, 3.5),
+            new THREE.MeshLambertMaterial({ color: selectedType.color })
         );
-        scene.add(botMesh);
-        aiBotPlanesArray.push({
-            mesh: botMesh,
-            speed: 0.38,
-            angle: Math.random() * Math.PI * 2,
-            hp: 60
+        botGroup.add(coreBody);
+
+        botGroup.position.set(
+            (Math.random() - 0.5) * 1000,
+            200 + Math.random() * 150,
+            -400 - Math.random() * 400
+        );
+        scene.add(botGroup);
+
+        activeAiBots.push({
+            mesh: botGroup,
+            hp: 100,
+            speed: 0.42,
+            typeName: selectedType.name
         });
-        pushCombatLogEntry(`⚠️ Enemy AI Fighter [Bf 109 - ${i+1}] detected in sector!`);
+        
+        pushCombatLogEntry(`⚠️ Enemy AI Fighter [${selectedType.name} #${i+1}] spawned in sector.`);
     }
 }
 
@@ -262,8 +267,8 @@ window.exitToHangar = function() {
         scene.remove(localFlightPhysicsVehicleObject);
         localFlightPhysicsVehicleObject = null;
     }
-    aiBotPlanesArray.forEach(bot => scene.remove(bot.mesh));
-    aiBotPlanesArray.length = 0;
+    activeAiBots.forEach(bot => scene.remove(bot.mesh));
+    activeAiBots.length = 0;
 
     Object.keys(onlineNetVisualPlanesMap).forEach(id => {
         scene.remove(onlineNetVisualPlanesMap[id]);
@@ -292,7 +297,10 @@ function setupMultiplayerNetworkStream() {
             }
             const networkEntityInfo = data[id];
             if (!onlineNetVisualPlanesMap[id]) {
-                onlineNetVisualPlanesMap[id] = assemblePixelatedAeroMesh(0x388bfd);
+                onlineNetVisualPlanesMap[id] = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.2, 0.8, 3.5),
+                    new THREE.MeshLambertMaterial({ color: 0x388bfd })
+                );
                 scene.add(onlineNetVisualPlanesMap[id]);
                 pushCombatLogEntry(`🌐 Allied Pilot [${id}] joined session.`);
             }
@@ -386,7 +394,6 @@ function animateEngineFrame() {
         const flightSpeed = 0.52;
         localFlightPhysicsVehicleObject.translateZ(-flightSpeed);
         
-        // War Thunder Arcade Arcade-style responsive steering controls
         const turnSensitivity = 0.028;
         if (playerControlInputVectors.w) localFlightPhysicsVehicleObject.rotation.x -= turnSensitivity;
         if (playerControlInputVectors.s) localFlightPhysicsVehicleObject.rotation.x += turnSensitivity;
@@ -397,10 +404,9 @@ function animateEngineFrame() {
             localFlightPhysicsVehicleObject.rotation.y -= turnSensitivity;
             localFlightPhysicsVehicleObject.rotation.z -= turnSensitivity * 0.8;
         } else {
-            localFlightPhysicsVehicleObject.rotation.z *= 0.92; // Stabilize roll
+            localFlightPhysicsVehicleObject.rotation.z *= 0.92;
         }
         
-        // Terrain Collision Check
         if (localFlightPhysicsVehicleObject.position.y < -48) {
             localFlightPhysicsVehicleObject.position.y = -48;
             currentVehicleHP -= 5;
@@ -411,21 +417,23 @@ function animateEngineFrame() {
             }
         }
 
-        // Update AI Bot Movement
-        aiBotPlanesArray.forEach((bot, index) => {
-            bot.angle += 0.01;
-            bot.mesh.position.x += Math.sin(bot.angle) * 1.5;
-            bot.mesh.position.z += Math.cos(bot.angle) * 1.5;
-            bot.mesh.rotation.y = bot.angle;
+        activeAiBots.forEach((bot, index) => {
+            bot.mesh.lookAt(localFlightPhysicsVehicleObject.position);
+            bot.mesh.translateZ(bot.speed);
 
-            // Check collision with player bullets or proximity
-            const dist = localFlightPhysicsVehicleObject.position.distanceTo(bot.mesh.position);
-            if (dist < 350 && Math.random() < 0.01) {
-                pushCombatLogEntry(`🎯 Enemy [Bf 109 #${index+1}] firing at your six!`);
+            const distanceToPlayer = bot.mesh.position.distanceTo(localFlightPhysicsVehicleObject.position);
+            if (distanceToPlayer < 120 && Math.random() < 0.02) {
+                currentVehicleHP -= 10;
+                document.getElementById('hud-hp').innerText = `${currentVehicleHP}%`;
+                pushCombatLogEntry(`💥 Enemy AI [${bot.typeName}] scored hits on your aircraft!`);
+                if (currentVehicleHP <= 0) {
+                    pushCombatLogEntry(`💀 Shot down by AI opponent!`);
+                    alert("Your aircraft was shot down in dogfight. Returning to hangar.");
+                    exitToHangar();
+                }
             }
         });
 
-        // Chase Camera Rig
         const cameraOffset = new THREE.Vector3(0, 1.2, 4.2);
         const targetCamPos = cameraOffset.applyMatrix4(localFlightPhysicsVehicleObject.matrixWorld);
         camera.position.lerp(targetCamPos, 0.3);
@@ -437,28 +445,25 @@ function animateEngineFrame() {
             weaponCooldown = 5;
         }
 
-        // Projectile Updates & Hit Detection
         for (let i = localActiveProjectilesArray.length - 1; i >= 0; i--) {
             const bullet = localActiveProjectilesArray[i];
             bullet.mesh.position.add(bullet.dir.clone().multiplyScalar(2.8));
             bullet.age++;
 
             if (bullet.owner === sessionId) {
-                // Check hits against AI bots
-                aiBotPlanesArray.forEach((bot, idx) => {
+                activeAiBots.forEach((bot, idx) => {
                     if (bullet.mesh.position.distanceTo(bot.mesh.position) < 3.5) {
                         bullet.age = bullet.maxAge;
                         bot.hp -= 25;
-                        pushCombatLogEntry(`💥 Hit scored on Enemy AI #${idx+1} (${bot.hp}% HP)`);
+                        pushCombatLogEntry(`💥 Hit scored on ${bot.typeName} #${idx+1} (${bot.hp}% HP)`);
                         if (bot.hp <= 0) {
                             scene.remove(bot.mesh);
-                            aiBotPlanesArray.splice(idx, 1);
+                            activeAiBots.splice(idx, 1);
                             pushCombatLogEntry(`🏆 Enemy AI Aircraft Shot Down!`);
                         }
                     }
                 });
 
-                // Check hits against online remote players
                 Object.keys(onlineNetVisualPlanesMap).forEach(remotePlayerId => {
                     const enemyPlane = onlineNetVisualPlanesMap[remotePlayerId];
                     if (bullet.mesh.position.distanceTo(enemyPlane.position) < 3.0) {
