@@ -22,12 +22,12 @@ const projectilestreamRef = ref(database, 'matchmaking/projectiles');
 onDisconnect(playerNetworkRef).remove();
 
 const AIRCRAFT_REGISTRY = [
-    { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, color: 0x7a8b99, unlocked: true, modelPath: "models/p51.glb", desc: "High velocity escort fighter with heavy dive contours." },
-    { id: "f4u", name: "F4U-1D Corsair", nation: "USA", br: 3.7, speed: 671, turn: 22.0, climb: 13.2, cost: 12000, color: 0x1c2d42, unlocked: false, modelPath: "models/f4u.glb", desc: "Carrier fighter sporting unique inverted gull wings." },
-    { id: "bf109", name: "Bf 109 G-6", nation: "GER", br: 4.7, speed: 640, turn: 20.0, climb: 19.5, cost: 0, color: 0x545c52, unlocked: true, modelPath: "models/bf109.glb", desc: "Interception master with devastating nose cannon configuration." },
-    { id: "fw190", name: "Fw 190 A-5", nation: "GER", br: 5.0, speed: 660, turn: 23.5, climb: 15.0, cost: 18000, color: 0x3d3f3c, unlocked: false, modelPath: "models/fw190.glb", desc: "Heavy firepower platform providing excellent roll stability." },
-    { id: "yak3", name: "Yak-3 Fighter", nation: "USSR", br: 4.3, speed: 655, turn: 18.5, climb: 18.0, cost: 0, color: 0x6e786c, unlocked: true, modelPath: "models/yak3.glb", desc: "Light frame configuration optimized for agile dogfights." },
-    { id: "spitfire", name: "Spitfire Mk IX", nation: "UK", br: 4.3, speed: 595, turn: 16.0, climb: 16.5, cost: 0, color: 0x4d5946, unlocked: true, modelPath: "models/supermarine_spitfire.glb", desc: "Elliptical wing design giving tighter horizontal turn rates." }
+    { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, color: 0x7a8b99, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "High velocity escort fighter with heavy dive contours." },
+    { id: "f4u", name: "F4U-1D Corsair", nation: "USA", br: 3.7, speed: 671, turn: 22.0, climb: 13.2, cost: 12000, color: 0x1c2d42, unlocked: false, modelPath: "supermarine_spitfire.glb", desc: "Carrier fighter sporting unique inverted gull wings." },
+    { id: "bf109", name: "Bf 109 G-6", nation: "GER", br: 4.7, speed: 640, turn: 20.0, climb: 19.5, cost: 0, color: 0x545c52, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Interception master with devastating nose cannon configuration." },
+    { id: "fw190", name: "Fw 190 A-5", nation: "GER", br: 5.0, speed: 660, turn: 23.5, climb: 15.0, cost: 18000, color: 0x3d3f3c, unlocked: false, modelPath: "supermarine_spitfire.glb", desc: "Heavy firepower platform providing excellent roll stability." },
+    { id: "yak3", name: "Yak-3 Fighter", nation: "USSR", br: 4.3, speed: 655, turn: 18.5, climb: 18.0, cost: 0, color: 0x6e786c, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Light frame configuration optimized for agile dogfights." },
+    { id: "spitfire", name: "Spitfire Mk IX", nation: "UK", br: 4.3, speed: 595, turn: 16.0, climb: 16.5, cost: 0, color: 0x4d5946, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Elliptical wing design giving tighter horizontal turn rates." }
 ];
 
 let economy = { sl: 75000, ge: 490 };
