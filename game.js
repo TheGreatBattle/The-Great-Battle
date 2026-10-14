@@ -34,10 +34,11 @@ let economy = { sl: 75000, ge: 490 };
 let activeSelectedAircraft = AIRCRAFT_REGISTRY[0];
 let activeNationFilter = "USA";
 let gameStateMode = "hangar";
-let scene, camera, renderer, hangarPlaneModel, simulationFloorGrid;
+let scene, camera, renderer, hangarPlaneModel, grassTerrainPlane;
 let localFlightPhysicsVehicleObject;
 let cachedPlaneModel = null;
 const onlineNetVisualPlanesMap = {};
+const aiBotPlanesArray = [];
 const localActiveProjectilesArray = [];
 const playerControlInputVectors = { w: false, s: false, a: false, d: false, space: false };
 let currentVehicleHP = 100;
@@ -55,21 +56,29 @@ function initializeAppCore() {
 
     function continueInitialization() {
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0e1318);
-        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
-        renderer = new THREE.WebGLRenderer({ antialias: false });
+        // War Thunder Blue Sky Atmosphere
+        scene.background = new THREE.Color(0x6ba4e8);
+        scene.fog = new THREE.FogExp2(0x8cb8e8, 0.0008);
+
+        camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
+        renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambient = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambient);
-        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        sunLight.position.set(40, 100, 40);
+        const sunLight = new THREE.DirectionalLight(0xfffaed, 1.1);
+        sunLight.position.set(200, 400, 200);
         scene.add(sunLight);
 
-        simulationFloorGrid = new THREE.GridHelper(2000, 80, 0x3c4852, 0x171f26);
-        simulationFloorGrid.position.y = -50;
-        scene.add(simulationFloorGrid);
+        // Grass Terrain Plane
+        const terrainGeo = new THREE.PlaneGeometry(8000, 8000);
+        const terrainMat = new THREE.MeshLambertMaterial({ color: 0x3d6b38 });
+        grassTerrainPlane = new THREE.Mesh(terrainGeo, terrainMat);
+        grassTerrainPlane.rotation.x = -Math.PI / 2;
+        grassTerrainPlane.position.y = -50;
+        scene.add(grassTerrainPlane);
 
         updateHangarShowcaseModel();
         window.addEventListener('keydown', (e) => handleKeyToggle(e, true));
@@ -89,7 +98,7 @@ function assemblePixelatedAeroMesh(colorHex) {
         airplaneCompositeGroup.add(modelClone);
     } else {
         const fallbackBox = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 3),
+            new THREE.BoxGeometry(1.2, 0.8, 3.5),
             new THREE.MeshLambertMaterial({ color: colorHex })
         );
         airplaneCompositeGroup.add(fallbackBox);
@@ -137,7 +146,7 @@ function renderActiveFleetSlots() {
             updateHangarShowcaseModel();
             renderActiveFleetSlots();
         };
-        div.innerHTML = `<div class="crew-lvl">CREW LEVEL 24</div><div class="crew-plane">${plane.name}</div><div style="font-size:11px; color:#4ba3e3; font-weight:bold;">BR ${plane.br}</div>`;
+        div.innerHTML = `<div class="crew-lvl">CREW LEVEL 24</div><div class="crew-plane">${plane.name}</div><div style="font-size:11px; color:#58a6ff; font-weight:bold;">BR ${plane.br}</div>`;
         target.appendChild(div);
     });
 }
@@ -159,7 +168,7 @@ function renderResearchTreeMatrix() {
                 alert(`Successfully researched ${plane.name}!`);
             }
         };
-        node.innerHTML = `<div style="font-weight:bold; font-size:14px; color:#fff;">${plane.name}</div><div style="font-size:11px; color:#8a9ba8;">BR: ${plane.br}</div><div class="node-cost">${plane.unlocked ? '<span style="color:#42a136;">RESEARCHED</span>' : `Research: 🦁 ${plane.cost.toLocaleString()} SL`}</div>`;
+        node.innerHTML = `<div style="font-weight:bold; font-size:14px; color:#fff;">${plane.name}</div><div style="font-size:11px; color:#8b949e;">BR: ${plane.br}</div><div class="node-cost" style="margin-top:6px; font-size:12px;">${plane.unlocked ? '<span style="color:#3fb950; font-weight:bold;">RESEARCHED</span>' : `Research: 🦁 ${plane.cost.toLocaleString()} SL`}</div>`;
         grid.appendChild(node);
     });
 }
@@ -180,7 +189,7 @@ window.buyCrewUpgrade = function() {
     if (economy.sl >= 5000) {
         economy.sl -= 5000;
         updateUIFields();
-        alert("Crew metrics expanded successfully.");
+        alert("Crew performance parameters upgraded successfully.");
     } else {
         alert("Insufficient Silver Lions allocation.");
     }
@@ -188,10 +197,10 @@ window.buyCrewUpgrade = function() {
 
 function handleKeyToggle(e, isDown) {
     const key = e.key.toLowerCase();
-    if (key === 'w' || e.key === 'ArrowUp') playerControlInputVectors.w = isDown;
-    if (key === 's' || e.key === 'ArrowDown') playerControlInputVectors.s = isDown;
-    if (key === 'a' || e.key === 'ArrowLeft') playerControlInputVectors.a = isDown;
-    if (key === 'd' || e.key === 'ArrowRight') playerControlInputVectors.d = isDown;
+    if (key === 'w' || e.key === 'arrowup') playerControlInputVectors.w = isDown;
+    if (key === 's' || e.key === 'arrowdown') playerControlInputVectors.s = isDown;
+    if (key === 'a' || e.key === 'arrowleft') playerControlInputVectors.a = isDown;
+    if (key === 'd' || e.key === 'arrowright') playerControlInputVectors.d = isDown;
     if (e.code === 'Space') playerControlInputVectors.space = isDown;
     if (e.key === 'Escape' && gameStateMode === "combat") exitToHangar();
 }
@@ -207,27 +216,55 @@ window.launchToBattle = function() {
     document.getElementById('ui-layer').style.display = 'none';
     document.getElementById('flight-hud').style.display = 'flex';
     if (hangarPlaneModel) scene.remove(hangarPlaneModel);
+    
     localFlightPhysicsVehicleObject = assemblePixelatedAeroMesh(activeSelectedAircraft.color);
-    localFlightPhysicsVehicleObject.position.set(
-        Math.random() * 200 - 100,
-        150 + Math.random() * 50,
-        Math.random() * 200 - 100
-    );
+    localFlightPhysicsVehicleObject.position.set(0, 180, 0);
     scene.add(localFlightPhysicsVehicleObject);
+
     currentVehicleHP = 100;
     document.getElementById('hud-hp').innerText = "100%";
-    document.getElementById('hud-hp').style.color = "#53ff53";
+    document.getElementById('hud-hp').style.color = "#3fb950";
+
+    // Spawn AI Enemy & Allied Bots for Arcade Dogfighting
+    spawnAiSquadron();
     setupMultiplayerNetworkStream();
 };
+
+function spawnAiSquadron() {
+    // Clear old bots
+    aiBotPlanesArray.forEach(bot => scene.remove(bot.mesh));
+    aiBotPlanesArray.length = 0;
+
+    for (let i = 0; i < 3; i++) {
+        const botMesh = assemblePixelatedAeroMesh(0xbb3333);
+        botMesh.position.set(
+            (Math.random() - 0.5) * 600,
+            150 + Math.random() * 100,
+            -300 - Math.random() * 300
+        );
+        scene.add(botMesh);
+        aiBotPlanesArray.push({
+            mesh: botMesh,
+            speed: 0.38,
+            angle: Math.random() * Math.PI * 2,
+            hp: 60
+        });
+        pushCombatLogEntry(`⚠️ Enemy AI Fighter [Bf 109 - ${i+1}] detected in sector!`);
+    }
+}
 
 window.exitToHangar = function() {
     gameStateMode = "hangar";
     document.getElementById('ui-layer').style.display = 'flex';
     document.getElementById('flight-hud').style.display = 'none';
+    
     if (localFlightPhysicsVehicleObject) {
         scene.remove(localFlightPhysicsVehicleObject);
         localFlightPhysicsVehicleObject = null;
     }
+    aiBotPlanesArray.forEach(bot => scene.remove(bot.mesh));
+    aiBotPlanesArray.length = 0;
+
     Object.keys(onlineNetVisualPlanesMap).forEach(id => {
         scene.remove(onlineNetVisualPlanesMap[id]);
         delete onlineNetVisualPlanesMap[id];
@@ -255,9 +292,9 @@ function setupMultiplayerNetworkStream() {
             }
             const networkEntityInfo = data[id];
             if (!onlineNetVisualPlanesMap[id]) {
-                onlineNetVisualPlanesMap[id] = assemblePixelatedAeroMesh(0xbf3b3b);
+                onlineNetVisualPlanesMap[id] = assemblePixelatedAeroMesh(0x388bfd);
                 scene.add(onlineNetVisualPlanesMap[id]);
-                pushCombatLogEntry(`⚠️ Enemy pilot [${id}] spawned!`);
+                pushCombatLogEntry(`🌐 Allied Pilot [${id}] joined session.`);
             }
             if (networkEntityInfo.position && networkEntityInfo.rotation) {
                 onlineNetVisualPlanesMap[id].position.set(networkEntityInfo.position.x, networkEntityInfo.position.y, networkEntityInfo.position.z);
@@ -286,39 +323,48 @@ function setupMultiplayerNetworkStream() {
 
 function triggerWeaponDischarge() {
     if (!localFlightPhysicsVehicleObject) return;
-    const projectileForwardVectorMat = new THREE.Vector3(0, 0, -1);
-    projectileForwardVectorMat.applyQuaternion(localFlightPhysicsVehicleObject.quaternion);
-    const muzzleLocationVector = localFlightPhysicsVehicleObject.position.clone().add(projectileForwardVectorMat.clone().multiplyScalar(2.0));
-    spawnTracerProjectile(muzzleLocationVector, projectileForwardVectorMat, sessionId);
+    const forwardVector = new THREE.Vector3(0, 0, -1);
+    forwardVector.applyQuaternion(localFlightPhysicsVehicleObject.quaternion);
+    const muzzlePos = localFlightPhysicsVehicleObject.position.clone().add(forwardVector.clone().multiplyScalar(2.5));
+    
+    spawnTracerProjectile(muzzlePos, forwardVector, sessionId);
     push(projectilestreamRef, {
         owner: sessionId,
-        pos: { x: muzzleLocationVector.x, y: muzzleLocationVector.y, z: muzzleLocationVector.z },
-        dir: { x: projectileForwardVectorMat.x, y: projectileForwardVectorMat.y, z: projectileForwardVectorMat.z },
+        pos: { x: muzzlePos.x, y: muzzlePos.y, z: muzzlePos.z },
+        dir: { x: forwardVector.x, y: forwardVector.y, z: forwardVector.z },
         timestamp: Date.now()
     });
 }
 
 function spawnTracerProjectile(originPos, vectorDir, ownerId) {
-    const tracerBoxGeo = new THREE.BoxGeometry(0.08, 0.08, 0.6);
-    const tracerMat = new THREE.MeshBasicMaterial({ color: ownerId === sessionId ? 0x53ff53 : 0xffaa00 });
-    const bulletMeshInstance = new THREE.Mesh(tracerBoxGeo, tracerMat);
-    bulletMeshInstance.position.copy(originPos);
-    bulletMeshInstance.lookAt(originPos.clone().add(vectorDir));
-    scene.add(bulletMeshInstance);
-    localActiveProjectilesArray.push({ mesh: bulletMeshInstance, dir: vectorDir, owner: ownerId, age: 0, maxAge: 120 });
+    const tracerGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6);
+    tracerGeo.rotateX(Math.PI / 2);
+    const tracerMat = new THREE.MeshBasicMaterial({ color: ownerId === sessionId ? 0xffea00 : 0xff4747 });
+    const bulletMesh = new THREE.Mesh(tracerGeo, tracerMat);
+    bulletMesh.position.copy(originPos);
+    bulletMesh.lookAt(originPos.clone().add(vectorDir));
+    scene.add(bulletMesh);
+    
+    localActiveProjectilesArray.push({
+        mesh: bulletMesh,
+        dir: vectorDir,
+        owner: ownerId,
+        age: 0,
+        maxAge: 140
+    });
 }
 
 function processLocalDamageEvent(attackerId) {
-    currentVehicleHP -= 15;
+    currentVehicleHP -= 20;
     set(ref(database, `matchmaking/arena/${sessionId}/hitRegistered`), { active: false, by: "" });
-    const hpUIElement = document.getElementById('hud-hp');
-    hpUIElement.innerText = `${currentVehicleHP}%`;
-    if (currentVehicleHP <= 50) hpUIElement.style.color = "#ffaa00";
-    if (currentVehicleHP <= 20) hpUIElement.style.color = "#ff3b3b";
-    pushCombatLogEntry(`💥 Impact taken! Hit from [${attackerId}]`);
+    const hpUI = document.getElementById('hud-hp');
+    hpUI.innerText = `${currentVehicleHP}%`;
+    if (currentVehicleHP <= 50) hpUI.style.color = "#f0883e";
+    if (currentVehicleHP <= 20) hpUI.style.color = "#ff7b72";
+    pushCombatLogEntry(`💥 Critical hit taken from [${attackerId}]!`);
     if (currentVehicleHP <= 0) {
-        pushCombatLogEntry(`💀 Shot down by [${attackerId}]`);
-        alert(`Your aircraft was shot down by pilot: ${attackerId}`);
+        pushCombatLogEntry(`💀 Aircraft destroyed in combat!`);
+        alert(`Your aircraft was shot down! Returning to hangar.`);
         exitToHangar();
     }
 }
@@ -328,56 +374,96 @@ function pushCombatLogEntry(messageString) {
     const item = document.createElement('div');
     item.innerText = messageString;
     feed.appendChild(item);
-    if (feed.childNodes.length > 5) feed.removeChild(feed.firstChild);
+    if (feed.childNodes.length > 6) feed.removeChild(feed.firstChild);
 }
 
-let internalWeaponFiringRateCooldownCounter = 0;
+let weaponCooldown = 0;
 function animateEngineFrame() {
     requestAnimationFrame(animateEngineFrame);
     if (gameStateMode === "hangar") {
-        if (hangarPlaneModel) hangarPlaneModel.rotation.y += 0.004;
+        if (hangarPlaneModel) hangarPlaneModel.rotation.y += 0.005;
     } else if (gameStateMode === "combat" && localFlightPhysicsVehicleObject) {
-        const baseVelocityVectorMag = 0.45;
-        localFlightPhysicsVehicleObject.translateZ(-baseVelocityVectorMag);
-        const rotationDeltaFactor = 0.024;
-        if (playerControlInputVectors.w) localFlightPhysicsVehicleObject.rotation.x -= rotationDeltaFactor;
-        if (playerControlInputVectors.s) localFlightPhysicsVehicleObject.rotation.x += rotationDeltaFactor;
-        if (playerControlInputVectors.a) localFlightPhysicsVehicleObject.rotation.y += rotationDeltaFactor;
-        if (playerControlInputVectors.d) localFlightPhysicsVehicleObject.rotation.y -= rotationDeltaFactor;
+        const flightSpeed = 0.52;
+        localFlightPhysicsVehicleObject.translateZ(-flightSpeed);
         
+        // War Thunder Arcade Arcade-style responsive steering controls
+        const turnSensitivity = 0.028;
+        if (playerControlInputVectors.w) localFlightPhysicsVehicleObject.rotation.x -= turnSensitivity;
+        if (playerControlInputVectors.s) localFlightPhysicsVehicleObject.rotation.x += turnSensitivity;
+        if (playerControlInputVectors.a) {
+            localFlightPhysicsVehicleObject.rotation.y += turnSensitivity;
+            localFlightPhysicsVehicleObject.rotation.z += turnSensitivity * 0.8;
+        } else if (playerControlInputVectors.d) {
+            localFlightPhysicsVehicleObject.rotation.y -= turnSensitivity;
+            localFlightPhysicsVehicleObject.rotation.z -= turnSensitivity * 0.8;
+        } else {
+            localFlightPhysicsVehicleObject.rotation.z *= 0.92; // Stabilize roll
+        }
+        
+        // Terrain Collision Check
         if (localFlightPhysicsVehicleObject.position.y < -48) {
             localFlightPhysicsVehicleObject.position.y = -48;
-            currentVehicleHP -= 2;
+            currentVehicleHP -= 5;
             if (currentVehicleHP <= 0) {
-                pushCombatLogEntry("💀 Terrain collision impact!");
+                pushCombatLogEntry("💥 Crashed into terrain!");
                 exitToHangar();
                 return;
             }
         }
-        
-        const spatialOffsetTargetVector = new THREE.Vector3(0, 0.8, 3.8);
-        const computedRigCameraWorldCoordinates = spatialOffsetTargetVector.applyMatrix4(localFlightPhysicsVehicleObject.matrixWorld);
-        camera.position.lerp(computedRigCameraWorldCoordinates, 0.25);
-        camera.lookAt(localFlightPhysicsVehicleObject.position.clone().add(new THREE.Vector3(0, 0.2, 0)));
-        
-        if (internalWeaponFiringRateCooldownCounter > 0) internalWeaponFiringRateCooldownCounter--;
-        if (playerControlInputVectors.space && internalWeaponFiringRateCooldownCounter === 0) {
+
+        // Update AI Bot Movement
+        aiBotPlanesArray.forEach((bot, index) => {
+            bot.angle += 0.01;
+            bot.mesh.position.x += Math.sin(bot.angle) * 1.5;
+            bot.mesh.position.z += Math.cos(bot.angle) * 1.5;
+            bot.mesh.rotation.y = bot.angle;
+
+            // Check collision with player bullets or proximity
+            const dist = localFlightPhysicsVehicleObject.position.distanceTo(bot.mesh.position);
+            if (dist < 350 && Math.random() < 0.01) {
+                pushCombatLogEntry(`🎯 Enemy [Bf 109 #${index+1}] firing at your six!`);
+            }
+        });
+
+        // Chase Camera Rig
+        const cameraOffset = new THREE.Vector3(0, 1.2, 4.2);
+        const targetCamPos = cameraOffset.applyMatrix4(localFlightPhysicsVehicleObject.matrixWorld);
+        camera.position.lerp(targetCamPos, 0.3);
+        camera.lookAt(localFlightPhysicsVehicleObject.position.clone().add(new THREE.Vector3(0, 0.3, 0)));
+
+        if (weaponCooldown > 0) weaponCooldown--;
+        if (playerControlInputVectors.space && weaponCooldown === 0) {
             triggerWeaponDischarge();
-            internalWeaponFiringRateCooldownCounter = 6;
+            weaponCooldown = 5;
         }
-        
+
+        // Projectile Updates & Hit Detection
         for (let i = localActiveProjectilesArray.length - 1; i >= 0; i--) {
             const bullet = localActiveProjectilesArray[i];
-            const speedMultiplierMatrixFactor = 2.2;
-            bullet.mesh.position.add(bullet.dir.clone().multiplyScalar(speedMultiplierMatrixFactor));
+            bullet.mesh.position.add(bullet.dir.clone().multiplyScalar(2.8));
             bullet.age++;
+
             if (bullet.owner === sessionId) {
+                // Check hits against AI bots
+                aiBotPlanesArray.forEach((bot, idx) => {
+                    if (bullet.mesh.position.distanceTo(bot.mesh.position) < 3.5) {
+                        bullet.age = bullet.maxAge;
+                        bot.hp -= 25;
+                        pushCombatLogEntry(`💥 Hit scored on Enemy AI #${idx+1} (${bot.hp}% HP)`);
+                        if (bot.hp <= 0) {
+                            scene.remove(bot.mesh);
+                            aiBotPlanesArray.splice(idx, 1);
+                            pushCombatLogEntry(`🏆 Enemy AI Aircraft Shot Down!`);
+                        }
+                    }
+                });
+
+                // Check hits against online remote players
                 Object.keys(onlineNetVisualPlanesMap).forEach(remotePlayerId => {
                     const enemyPlane = onlineNetVisualPlanesMap[remotePlayerId];
-                    const physicalProximityDistance = bullet.mesh.position.distanceTo(enemyPlane.position);
-                    if (physicalProximityDistance < 2.0) {
+                    if (bullet.mesh.position.distanceTo(enemyPlane.position) < 3.0) {
                         bullet.age = bullet.maxAge;
-                        pushCombatLogEntry(`🎯 Hit registered against [${remotePlayerId}]!`);
+                        pushCombatLogEntry(`🎯 Hit registered against player [${remotePlayerId}]!`);
                         set(ref(database, `matchmaking/arena/${remotePlayerId}/hitRegistered`), {
                             active: true,
                             by: sessionId,
@@ -386,19 +472,20 @@ function animateEngineFrame() {
                     }
                 });
             }
+
             if (bullet.age >= bullet.maxAge) {
                 scene.remove(bullet.mesh);
                 localActiveProjectilesArray.splice(i, 1);
             }
         }
-        
+
         set(playerNetworkRef, {
             position: { x: localFlightPhysicsVehicleObject.position.x, y: localFlightPhysicsVehicleObject.position.y, z: localFlightPhysicsVehicleObject.position.z },
             rotation: { x: localFlightPhysicsVehicleObject.rotation.x, y: localFlightPhysicsVehicleObject.rotation.y, z: localFlightPhysicsVehicleObject.rotation.z },
             heartbeat: Date.now()
         });
-        
-        document.getElementById('hud-spd').innerText = Math.round(baseVelocityVectorMag * 1200);
+
+        document.getElementById('hud-spd').innerText = Math.round(flightSpeed * 1250);
         document.getElementById('hud-alt').innerText = Math.round(localFlightPhysicsVehicleObject.position.y + 50);
     }
     renderer.render(scene, camera);
