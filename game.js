@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, onDisconnect, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader } from "https://unpkg.com/three@0.128.0/examples/jsm/loaders/GLTFLoader.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBSo3GMBnLzfV5svZRBU8nAWq837TZH0ic",
@@ -88,20 +88,31 @@ function loadAircraftModel(plane, callback) {
     }
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(plane.modelPath, (gltf) => {
-        const model = gltf.scene;
-        const box = new THREE.Box3().setFromObject(model);
+        const rawModel = gltf.scene;
+        
+        // Auto-scale and center Sketchfab model
+        const box = new THREE.Box3().setFromObject(rawModel);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim > 0) {
             const scaleFactor = 3.0 / maxDim;
-            model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            rawModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
         }
-        box.setFromObject(model);
-        model.position.sub(box.getCenter(new THREE.Vector3()));
+        box.setFromObject(rawModel);
+        rawModel.position.sub(box.getCenter(new THREE.Vector3()));
 
-        loadedPlaneModelsCache[plane.id] = model;
-        callback(model.clone());
+        // --- AXIS CORRECTION WRAPPER ---
+        const correctedWrapperGroup = new THREE.Group();
+        // Uncomment below if your specific Sketchfab model needs extra orientation tuning:
+        // rawModel.rotation.x = Math.PI / 2; 
+        // rawModel.rotation.y = Math.PI;     
+        correctedWrapperGroup.add(rawModel);
+        // -------------------------------
+
+        loadedPlaneModelsCache[plane.id] = correctedWrapperGroup;
+        callback(correctedWrapperGroup.clone());
     }, undefined, (error) => {
+        console.warn("GLTF load failed, using fallback box mesh:", error);
         const fallbackBox = new THREE.Mesh(
             new THREE.BoxGeometry(1.2, 0.8, 3.5),
             new THREE.MeshLambertMaterial({ color: plane.color })
@@ -208,7 +219,6 @@ function onMouseMoveHandler(e) {
     mouseAimCoordinates.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouseAimCoordinates.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
-    // Move visual crosshair reticle on HUD
     const reticle = document.getElementById('mouse-aim-reticle');
     if (reticle) {
         reticle.style.left = `${e.clientX}px`;
@@ -419,12 +429,11 @@ function animateEngineFrame() {
         const flightSpeed = 0.52;
         localFlightPhysicsVehicleObject.translateZ(-flightSpeed);
         
-        // --- WAR THUNDER MOUSE-AIM FLIGHT PHYSICS ---
+        // War Thunder Mouse-Aim Steering
         const steeringSensitivity = 0.022;
         localFlightPhysicsVehicleObject.rotation.y -= mouseAimCoordinates.x * steeringSensitivity;
         localFlightPhysicsVehicleObject.rotation.x += mouseAimCoordinates.y * steeringSensitivity;
-        localFlightPhysicsVehicleObject.rotation.z = -mouseAimCoordinates.x * 0.6; // Natural bank roll into turns
-        // ---------------------------------------------
+        localFlightPhysicsVehicleObject.rotation.z = -mouseAimCoordinates.x * 0.6;
         
         if (localFlightPhysicsVehicleObject.position.y < -48) {
             localFlightPhysicsVehicleObject.position.y = -48;
