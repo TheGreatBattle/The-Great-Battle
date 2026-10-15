@@ -22,16 +22,17 @@ const projectilestreamRef = ref(database, 'matchmaking/projectiles');
 onDisconnect(playerNetworkRef).remove();
 
 const AIRCRAFT_REGISTRY = [
-    { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, color: 0x7a8b99, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "High velocity escort fighter with heavy dive contours." },
-    { id: "f4u", name: "F4U-1D Corsair", nation: "USA", br: 3.7, speed: 671, turn: 22.0, climb: 13.2, cost: 12000, color: 0x1c2d42, unlocked: false, modelPath: "supermarine_spitfire.glb", desc: "Carrier fighter sporting unique inverted gull wings." },
-    { id: "bf109", name: "Bf 109 G-6", nation: "GER", br: 4.7, speed: 640, turn: 20.0, climb: 19.5, cost: 0, color: 0x545c52, unlocked: true, modelPath: "bf109.glb", desc: "Interception master with devastating nose cannon configuration." },
-    { id: "fw190", name: "Fw 190 A-5", nation: "GER", br: 5.0, speed: 660, turn: 23.5, climb: 15.0, cost: 18000, color: 0x3d3f3c, unlocked: false, modelPath: "supermarine_spitfire.glb", desc: "Heavy firepower platform providing excellent roll stability." },
-    { id: "yak3", name: "Yak-3 Fighter", nation: "USSR", br: 4.3, speed: 655, turn: 18.5, climb: 18.0, cost: 0, color: 0x6e786c, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Light frame configuration optimized for agile dogfights." },
-    { id: "spitfire", name: "Spitfire Mk IX", nation: "UK", br: 4.3, speed: 595, turn: 16.0, climb: 16.5, cost: 0, color: 0x4d5946, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Elliptical wing design giving tighter horizontal turn rates." }
+    { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, premium: false, color: 0x7a8b99, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "High velocity escort fighter with heavy dive contours." },
+    { id: "f4u", name: "XP-50 Premium", nation: "USA", br: 4.0, speed: 650, turn: 19.0, climb: 22.0, cost: 1200, premium: true, color: 0xd4af37, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "High-climbing interceptor variant featuring exceptional acceleration." },
+    { id: "bf109", name: "Bf 109 G-6", nation: "GER", br: 4.7, speed: 640, turn: 20.0, climb: 19.5, cost: 0, premium: false, color: 0x545c52, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Interception master with devastating nose cannon configuration." },
+    { id: "fw190", name: "Hitler's P-47", nation: "GER", br: 4.7, speed: 680, turn: 22.5, climb: 16.0, cost: 1600, premium: true, color: 0xd4af37, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Captured heavy fighter utilized for devastating ground strikes." },
+    { id: "yak3", name: "Yak-3 Fighter", nation: "USSR", br: 4.3, speed: 655, turn: 18.5, climb: 18.0, cost: 0, premium: false, color: 0x6e786c, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Light frame configuration optimized for agile dogfights." },
+    { id: "spitfire", name: "Spitfire Mk IX", nation: "UK", br: 4.3, speed: 595, turn: 16.0, climb: 16.5, cost: 0, premium: false, color: 0x4d5946, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Elliptical wing design giving tighter horizontal turn rates." }
 ];
 
 let economy = { sl: 75000, ge: 490 };
 let activeSelectedAircraft = AIRCRAFT_REGISTRY[0];
+let lineupSelectedAircraft = AIRCRAFT_REGISTRY[0];
 let activeNationFilter = "USA";
 let gameStateMode = "hangar";
 let scene, camera, renderer, hangarPlaneModel, grassTerrainPlane;
@@ -41,7 +42,6 @@ const onlineNetVisualPlanesMap = {};
 const activeAiBots = [];
 const localActiveProjectilesArray = [];
 
-// Mouse Aim Tracking Coordinates (-1 to 1 normalized)
 const mouseAimCoordinates = { x: 0, y: 0, rawX: 0, rawY: 0 };
 const playerControlInputVectors = { space: false };
 let currentVehicleHP = 100;
@@ -78,6 +78,14 @@ function initializeAppCore() {
     renderActiveFleetSlots();
     renderResearchTreeMatrix();
     updateUIFields();
+
+    // Hide initial loading screen
+    setTimeout(() => {
+        const loader = document.getElementById('loading-overlay');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+    }, 1200);
+
     animateEngineFrame();
 }
 
@@ -89,8 +97,6 @@ function loadAircraftModel(plane, callback) {
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(plane.modelPath, (gltf) => {
         const rawModel = gltf.scene;
-        
-        // Auto-scale and center Sketchfab model
         const box = new THREE.Box3().setFromObject(rawModel);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
@@ -101,16 +107,13 @@ function loadAircraftModel(plane, callback) {
         box.setFromObject(rawModel);
         rawModel.position.sub(box.getCenter(new THREE.Vector3()));
 
-        // --- AXIS CORRECTION WRAPPER (Fixes Sideways / Left-facing orientation) ---
         const correctedWrapperGroup = new THREE.Group();
-        rawModel.rotation.y = Math.PI / 2; // Adjust to -Math.PI / 2 if facing the opposite direction
+        rawModel.rotation.y = Math.PI / 2;
         correctedWrapperGroup.add(rawModel);
-        // ------------------------------------------------------------------------
 
         loadedPlaneModelsCache[plane.id] = correctedWrapperGroup;
         callback(correctedWrapperGroup.clone());
-    }, undefined, (error) => {
-        console.warn("GLTF load failed, using fallback box mesh:", error);
+    }, undefined, () => {
         const fallbackBox = new THREE.Mesh(
             new THREE.BoxGeometry(1.2, 0.8, 3.5),
             new THREE.MeshLambertMaterial({ color: plane.color })
@@ -168,23 +171,29 @@ function renderActiveFleetSlots() {
 
 function renderResearchTreeMatrix() {
     const grid = document.getElementById('tree-grid-target');
+    const premiumGrid = document.getElementById('premium-grid-target');
     grid.innerHTML = '';
+    premiumGrid.innerHTML = '<div style="font-size:11px; font-weight:bold; color:#f0883e; text-transform:uppercase; text-align:center;">★ Premium Squadrons</div>';
+
     const targetedNationSet = AIRCRAFT_REGISTRY.filter(p => p.nation === activeNationFilter);
+    
     targetedNationSet.forEach(plane => {
         const node = document.createElement('div');
-        node.className = `research-node ${plane.unlocked ? 'unlocked' : 'locked'}`;
+        node.className = `research-node ${plane.unlocked ? 'unlocked' : 'locked'} ${plane.premium ? 'premium' : ''}`;
         node.onclick = () => {
-            if (!plane.unlocked && economy.sl >= plane.cost) {
-                economy.sl -= plane.cost;
-                plane.unlocked = true;
-                updateUIFields();
-                renderResearchTreeMatrix();
-                renderActiveFleetSlots();
-                alert(`Successfully researched ${plane.name}!`);
-            }
+            activeSelectedAircraft = plane;
+            updateUIFields();
+            updateHangarShowcaseModel();
         };
-        node.innerHTML = `<div style="font-weight:bold; font-size:14px; color:#fff;">${plane.name}</div><div style="font-size:11px; color:#8b949e;">BR: ${plane.br}</div><div class="node-cost" style="margin-top:6px; font-size:12px;">${plane.unlocked ? '<span style="color:#3fb950; font-weight:bold;">RESEARCHED</span>' : `Research: 🦁 ${plane.cost.toLocaleString()} SL`}</div>`;
-        grid.appendChild(node);
+        
+        const contentHTML = `<div style="font-weight:bold; font-size:13px; color:#fff;">${plane.name}</div><div style="font-size:11px; color:#8b949e;">BR: ${plane.br}</div><div style="margin-top:4px; font-size:11px; color:${plane.premium ? '#f0883e' : '#3fb950'};">${plane.premium ? `🦅 ${plane.cost} GE` : 'Researched'}</div>`;
+        node.innerHTML = contentHTML;
+
+        if (plane.premium) {
+            premiumGrid.appendChild(node);
+        } else {
+            grid.appendChild(node);
+        }
     });
 }
 
@@ -199,6 +208,43 @@ function updateUIFields() {
     document.getElementById('card-climb').innerText = `${activeSelectedAircraft.climb.toFixed(1)} m/s`;
     document.getElementById('card-desc').innerText = activeSelectedAircraft.desc;
 }
+
+window.openLineupSelectionModal = function() {
+    const grid = document.getElementById('lineup-grid-slots');
+    grid.innerHTML = '';
+    const unlockedPlanes = AIRCRAFT_REGISTRY.filter(p => p.unlocked);
+    
+    unlockedPlanes.forEach(plane => {
+        const card = document.createElement('div');
+        card.className = `lineup-card ${lineupSelectedAircraft.id === plane.id ? 'selected' : ''}`;
+        card.onclick = () => {
+            lineupSelectedAircraft = plane;
+            openLineupSelectionModal();
+        };
+        card.innerHTML = `<div style="font-size:11px; color:#f0883e; font-weight:bold;">${plane.nation}</div><div style="font-weight:bold; font-size:14px; color:#fff;">${plane.name}</div><div style="font-size:12px; color:#58a6ff;">Battle Rating: ${plane.br}</div>`;
+        grid.appendChild(card);
+    });
+
+    document.getElementById('lineup-screen').style.display = 'flex';
+};
+
+window.closeLineupSelectionModal = function() {
+    document.getElementById('lineup-screen').style.display = 'none';
+};
+
+window.confirmDeploymentAndLaunch = function() {
+    document.getElementById('lineup-screen').style.display = 'none';
+    const loader = document.getElementById('loading-overlay');
+    document.getElementById('loading-txt').innerText = `DEPLOYING INTO ${lineupSelectedAircraft.name}...`;
+    loader.style.display = 'flex';
+    loader.style.opacity = '1';
+
+    setTimeout(() => {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+        launchToBattleWithAircraft(lineupSelectedAircraft);
+    }, 1500);
+};
 
 window.buyCrewUpgrade = function() {
     if (economy.sl >= 5000) {
@@ -235,13 +281,13 @@ function onWindowResizeHandler() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-window.launchToBattle = function() {
+function launchToBattleWithAircraft(planeChoice) {
     gameStateMode = "combat";
     document.getElementById('ui-layer').style.display = 'none';
     document.getElementById('flight-hud').style.display = 'flex';
     if (hangarPlaneModel) scene.remove(hangarPlaneModel);
     
-    loadAircraftModel(activeSelectedAircraft, (model) => {
+    loadAircraftModel(planeChoice, (model) => {
         localFlightPhysicsVehicleObject = model;
         localFlightPhysicsVehicleObject.position.set(0, 180, 0);
         scene.add(localFlightPhysicsVehicleObject);
@@ -253,7 +299,7 @@ window.launchToBattle = function() {
 
     spawnAiSquadron();
     setupMultiplayerNetworkStream();
-};
+}
 
 function spawnAiSquadron() {
     activeAiBots.forEach(bot => scene.remove(bot.mesh));
@@ -404,10 +450,22 @@ function processLocalDamageEvent(attackerId) {
     if (currentVehicleHP <= 20) hpUI.style.color = "#ff7b72";
     pushCombatLogEntry(`💥 Critical hit taken from [${attackerId}]!`);
     if (currentVehicleHP <= 0) {
-        pushCombatLogEntry(`💀 Aircraft destroyed in combat!`);
-        alert(`Your aircraft was shot down! Returning to hangar.`);
-        exitToHangar();
+        showShotDownScreen();
     }
+}
+
+function showShotDownScreen() {
+    pushCombatLogEntry(`💀 Aircraft destroyed in combat!`);
+    const loader = document.getElementById('loading-overlay');
+    document.getElementById('loading-txt').innerText = "AIRCRAFT DESTROYED - RETURNING TO HANGAR...";
+    loader.style.display = 'flex';
+    loader.style.opacity = '1';
+
+    setTimeout(() => {
+        exitToHangar();
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+    }, 2000);
 }
 
 function pushCombatLogEntry(messageString) {
@@ -427,7 +485,6 @@ function animateEngineFrame() {
         const flightSpeed = 0.52;
         localFlightPhysicsVehicleObject.translateZ(-flightSpeed);
         
-        // War Thunder Mouse-Aim Steering
         const steeringSensitivity = 0.022;
         localFlightPhysicsVehicleObject.rotation.y -= mouseAimCoordinates.x * steeringSensitivity;
         localFlightPhysicsVehicleObject.rotation.x += mouseAimCoordinates.y * steeringSensitivity;
@@ -438,7 +495,7 @@ function animateEngineFrame() {
             currentVehicleHP -= 5;
             if (currentVehicleHP <= 0) {
                 pushCombatLogEntry("💥 Crashed into terrain!");
-                exitToHangar();
+                showShotDownScreen();
                 return;
             }
         }
@@ -453,9 +510,7 @@ function animateEngineFrame() {
                 document.getElementById('hud-hp').innerText = `${currentVehicleHP}%`;
                 pushCombatLogEntry(`💥 Enemy AI [${bot.typeName}] scored hits on your aircraft!`);
                 if (currentVehicleHP <= 0) {
-                    pushCombatLogEntry(`💀 Shot down by AI opponent!`);
-                    alert("Your aircraft was shot down in dogfight. Returning to hangar.");
-                    exitToHangar();
+                    showShotDownScreen();
                 }
             }
         });
