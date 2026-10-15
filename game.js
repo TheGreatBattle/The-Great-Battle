@@ -101,13 +101,11 @@ function loadAircraftModel(plane, callback) {
         box.setFromObject(rawModel);
         rawModel.position.sub(box.getCenter(new THREE.Vector3()));
 
-        // --- AXIS CORRECTION WRAPPER ---
+        // --- AXIS CORRECTION WRAPPER (Fixes Sideways / Left-facing orientation) ---
         const correctedWrapperGroup = new THREE.Group();
-        // Uncomment below if your specific Sketchfab model needs extra orientation tuning:
-        // rawModel.rotation.x = Math.PI / 2; 
-        // rawModel.rotation.y = Math.PI;     
+        rawModel.rotation.y = Math.PI / 2; // Adjust to -Math.PI / 2 if facing the opposite direction
         correctedWrapperGroup.add(rawModel);
-        // -------------------------------
+        // ------------------------------------------------------------------------
 
         loadedPlaneModelsCache[plane.id] = correctedWrapperGroup;
         callback(correctedWrapperGroup.clone());
