@@ -40,7 +40,10 @@ let loadedPlaneModelsCache = {};
 const onlineNetVisualPlanesMap = {};
 const activeAiBots = [];
 const localActiveProjectilesArray = [];
-const playerControlInputVectors = { w: false, s: false, a: false, d: false, space: false };
+
+// Mouse Aim Tracking Coordinates (-1 to 1 normalized)
+const mouseAimCoordinates = { x: 0, y: 0, rawX: 0, rawY: 0 };
+const playerControlInputVectors = { space: false };
 let currentVehicleHP = 100;
 
 function initializeAppCore() {
@@ -68,6 +71,7 @@ function initializeAppCore() {
     scene.add(grassTerrainPlane);
 
     updateHangarShowcaseModel();
+    window.addEventListener('mousemove', onMouseMoveHandler);
     window.addEventListener('keydown', (e) => handleKeyToggle(e, true));
     window.addEventListener('keyup', (e) => handleKeyToggle(e, false));
     window.addEventListener('resize', onWindowResizeHandler);
@@ -85,8 +89,6 @@ function loadAircraftModel(plane, callback) {
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(plane.modelPath, (gltf) => {
         const model = gltf.scene;
-        
-        // Auto-scale and center Sketchfab model
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
@@ -100,7 +102,6 @@ function loadAircraftModel(plane, callback) {
         loadedPlaneModelsCache[plane.id] = model;
         callback(model.clone());
     }, undefined, (error) => {
-        console.warn("GLTF load failed, using fallback box mesh:", error);
         const fallbackBox = new THREE.Mesh(
             new THREE.BoxGeometry(1.2, 0.8, 3.5),
             new THREE.MeshLambertMaterial({ color: plane.color })
@@ -200,12 +201,22 @@ window.buyCrewUpgrade = function() {
     }
 };
 
+function onMouseMoveHandler(e) {
+    if (gameStateMode !== "combat") return;
+    mouseAimCoordinates.rawX = e.clientX;
+    mouseAimCoordinates.rawY = e.clientY;
+    mouseAimCoordinates.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouseAimCoordinates.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    // Move visual crosshair reticle on HUD
+    const reticle = document.getElementById('mouse-aim-reticle');
+    if (reticle) {
+        reticle.style.left = `${e.clientX}px`;
+        reticle.style.top = `${e.clientY}px`;
+    }
+}
+
 function handleKeyToggle(e, isDown) {
-    const key = e.key.toLowerCase();
-    if (key === 'w' || e.key === 'arrowup') playerControlInputVectors.w = isDown;
-    if (key === 's' || e.key === 'arrowdown') playerControlInputVectors.s = isDown;
-    if (key === 'a' || e.key === 'arrowleft') playerControlInputVectors.a = isDown;
-    if (key === 'd' || e.key === 'arrowright') playerControlInputVectors.d = isDown;
     if (e.code === 'Space') playerControlInputVectors.space = isDown;
     if (e.key === 'Escape' && gameStateMode === "combat") exitToHangar();
 }
@@ -408,18 +419,12 @@ function animateEngineFrame() {
         const flightSpeed = 0.52;
         localFlightPhysicsVehicleObject.translateZ(-flightSpeed);
         
-        const turnSensitivity = 0.028;
-        if (playerControlInputVectors.w) localFlightPhysicsVehicleObject.rotation.x -= turnSensitivity;
-        if (playerControlInputVectors.s) localFlightPhysicsVehicleObject.rotation.x += turnSensitivity;
-        if (playerControlInputVectors.a) {
-            localFlightPhysicsVehicleObject.rotation.y += turnSensitivity;
-            localFlightPhysicsVehicleObject.rotation.z += turnSensitivity * 0.8;
-        } else if (playerControlInputVectors.d) {
-            localFlightPhysicsVehicleObject.rotation.y -= turnSensitivity;
-            localFlightPhysicsVehicleObject.rotation.z -= turnSensitivity * 0.8;
-        } else {
-            localFlightPhysicsVehicleObject.rotation.z *= 0.92;
-        }
+        // --- WAR THUNDER MOUSE-AIM FLIGHT PHYSICS ---
+        const steeringSensitivity = 0.022;
+        localFlightPhysicsVehicleObject.rotation.y -= mouseAimCoordinates.x * steeringSensitivity;
+        localFlightPhysicsVehicleObject.rotation.x += mouseAimCoordinates.y * steeringSensitivity;
+        localFlightPhysicsVehicleObject.rotation.z = -mouseAimCoordinates.x * 0.6; // Natural bank roll into turns
+        // ---------------------------------------------
         
         if (localFlightPhysicsVehicleObject.position.y < -48) {
             localFlightPhysicsVehicleObject.position.y = -48;
