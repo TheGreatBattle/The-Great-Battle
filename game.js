@@ -46,6 +46,14 @@ const mouseAimCoordinates = { x: 0, y: 0, rawX: 0, rawY: 0 };
 const playerControlInputVectors = { space: false };
 let currentVehicleHP = 100;
 
+// Crew slots mapping per nation
+let nationLineups = {
+    USA: AIRCRAFT_REGISTRY.find(p => p.id === "p51"),
+    GER: AIRCRAFT_REGISTRY.find(p => p.id === "bf109"),
+    USSR: AIRCRAFT_REGISTRY.find(p => p.id === "yak3"),
+    UK: AIRCRAFT_REGISTRY.find(p => p.id === "spitfire")
+};
+
 function initializeAppCore() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x6ba4e8);
@@ -79,7 +87,6 @@ function initializeAppCore() {
     renderResearchTreeMatrix();
     updateUIFields();
 
-    // Hide initial loading screen
     setTimeout(() => {
         const loader = document.getElementById('loading-overlay');
         loader.style.opacity = '0';
@@ -142,29 +149,32 @@ window.switchHangarTab = function(tabName) {
     if (targetBtn) targetBtn.classList.add('active');
 };
 
-window.filterTreeNation = function(nationCode) {
+window.onNationDropdownChange = function(nationCode) {
     activeNationFilter = nationCode;
-    document.querySelectorAll('.nation-tab').forEach(btn => btn.classList.remove('active'));
-    const activeNBtn = document.getElementById('ntab-' + nationCode);
-    if(activeNBtn) activeNBtn.classList.add('active');
+    document.getElementById('hangar-country-indicator').innerText = `Active Nation: ${nationCode}`;
     renderResearchTreeMatrix();
 };
 
 function renderActiveFleetSlots() {
     const target = document.getElementById('fleet-carousel-slots');
     target.innerHTML = '';
-    const displayFleet = AIRCRAFT_REGISTRY.filter(p => p.unlocked);
-    displayFleet.forEach(plane => {
-        const isSelected = plane.id === activeSelectedAircraft.id;
+    
+    Object.keys(nationLineups).forEach(natKey => {
+        const plane = nationLineups[natKey];
+        const isCurrentNation = activeNationFilter === natKey;
         const div = document.createElement('div');
-        div.className = `crew-slot ${isSelected ? 'active' : ''}`;
+        div.className = `crew-slot ${isCurrentNation ? 'active' : ''}`;
         div.onclick = () => {
+            activeNationFilter = natKey;
+            document.getElementById('nation-dropdown-select').value = natKey;
+            document.getElementById('hangar-country-indicator').innerText = `Active Nation: ${natKey}`;
             activeSelectedAircraft = plane;
             updateUIFields();
             updateHangarShowcaseModel();
             renderActiveFleetSlots();
+            renderResearchTreeMatrix();
         };
-        div.innerHTML = `<div class="crew-lvl">CREW LEVEL 24</div><div class="crew-plane">${plane.name}</div><div style="font-size:11px; color:#58a6ff; font-weight:bold;">BR ${plane.br}</div>`;
+        div.innerHTML = `<div class="crew-lvl">CREW SLOT [${natKey}]</div><div class="crew-plane">${plane ? plane.name : 'Empty'}</div><div style="font-size:11px; color:#58a6ff; font-weight:bold;">BR ${plane ? plane.br : '-'}</div>`;
         target.appendChild(div);
     });
 }
@@ -182,11 +192,13 @@ function renderResearchTreeMatrix() {
         node.className = `research-node ${plane.unlocked ? 'unlocked' : 'locked'} ${plane.premium ? 'premium' : ''}`;
         node.onclick = () => {
             activeSelectedAircraft = plane;
+            nationLineups[activeNationFilter] = plane;
             updateUIFields();
             updateHangarShowcaseModel();
+            renderActiveFleetSlots();
         };
         
-        const contentHTML = `<div style="font-weight:bold; font-size:13px; color:#fff;">${plane.name}</div><div style="font-size:11px; color:#8b949e;">BR: ${plane.br}</div><div style="margin-top:4px; font-size:11px; color:${plane.premium ? '#f0883e' : '#3fb950'};">${plane.premium ? `🦅 ${plane.cost} GE` : 'Researched'}</div>`;
+        const contentHTML = `<div style="font-weight:bold; font-size:13px; color:#fff;">${plane.name}</div><div style="font-size:11px; color:#8b949e;">BR: ${plane.br}</div><div style="margin-top:4px; font-size:11px; color:${plane.premium ? '#f0883e' : '#3fb950'};">${plane.premium ? `🦅 ${plane.cost} GE` : 'Assigned to Crew'}</div>`;
         node.innerHTML = contentHTML;
 
         if (plane.premium) {
@@ -212,18 +224,15 @@ function updateUIFields() {
 window.openLineupSelectionModal = function() {
     const grid = document.getElementById('lineup-grid-slots');
     grid.innerHTML = '';
-    const unlockedPlanes = AIRCRAFT_REGISTRY.filter(p => p.unlocked);
     
-    unlockedPlanes.forEach(plane => {
-        const card = document.createElement('div');
-        card.className = `lineup-card ${lineupSelectedAircraft.id === plane.id ? 'selected' : ''}`;
-        card.onclick = () => {
-            lineupSelectedAircraft = plane;
-            openLineupSelectionModal();
-        };
-        card.innerHTML = `<div style="font-size:11px; color:#f0883e; font-weight:bold;">${plane.nation}</div><div style="font-weight:bold; font-size:14px; color:#fff;">${plane.name}</div><div style="font-size:12px; color:#58a6ff;">Battle Rating: ${plane.br}</div>`;
-        grid.appendChild(card);
-    });
+    // Use the aircraft currently assigned to the active nation's crew slot
+    const assignedPlane = nationLineups[activeNationFilter] || activeSelectedAircraft;
+    lineupSelectedAircraft = assignedPlane;
+
+    const card = document.createElement('div');
+    card.className = `lineup-card selected`;
+    card.innerHTML = `<div style="font-size:11px; color:#f0883e; font-weight:bold;">${activeNationFilter} CREW SLOT</div><div style="font-weight:bold; font-size:14px; color:#fff;">${assignedPlane.name}</div><div style="font-size:12px; color:#58a6ff;">Battle Rating: ${assignedPlane.br}</div>`;
+    grid.appendChild(card);
 
     document.getElementById('lineup-screen').style.display = 'flex';
 };
