@@ -27,7 +27,8 @@
 
         /* Top Bar */
         .top-bar { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to bottom, rgba(22,27,34,0.95), rgba(11,15,20,0.9)); border: 1px solid #30363d; border-radius: 6px; padding: 12px 25px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); }
-        .game-logo { font-weight: 900; font-style: italic; font-size: 24px; color: #f0883e; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); letter-spacing: 1px; }
+        .game-logo { font-weight: 900; font-style: italic; font-size: 22px; color: #f0883e; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); letter-spacing: 1px; display: flex; align-items: center; gap: 15px; }
+        .online-pill { font-size: 11px; font-style: normal; font-weight: bold; background: rgba(35, 134, 54, 0.2); border: 1px solid #238636; color: #3fb950; padding: 4px 10px; border-radius: 12px; }
         .currencies { display: flex; gap: 25px; font-weight: bold; font-size: 14px; }
         .silver-lions { color: #c9d1d9; } .golden-eagles { color: #f0883e; }
         
@@ -48,7 +49,7 @@
         .center-display.active { display: block; }
         
         /* War Thunder Style Tech Tree Layout */
-        .nation-selector { display: flex; gap: 6px; margin-bottom: 15px; align-items: center; }
+        .nation-selector { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
         .nation-dropdown { background: #21262d; border: 1px solid #30363d; color: #fff; padding: 8px 16px; font-size: 13px; font-weight: bold; font-family: 'Andale Mono', monospace; cursor: pointer; border-radius: 4px; outline: none; }
         
         .tech-tree-layout { display: flex; gap: 15px; height: calc(100% - 50px); }
@@ -82,7 +83,7 @@
 
         /* Flight HUD */
         #flight-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; flex-direction: column; justify-content: space-between; padding: 30px; box-sizing: border-box; font-family: 'Andale Mono', monospace; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; }
-        .hud-left-telemetry { color: #3fb950; font-size: 16px; line-height: 1.5em; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 6px; width: fit-content; border: 1px solid rgba(63,185,80,0.3); }
+        .hud-left-telemetry { color: #3fb950; font-size: 15px; line-height: 1.5em; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 6px; width: fit-content; border: 1px solid rgba(63,185,80,0.3); }
         .hud-center-crosshair { position: absolute; width: 36px; height: 36px; border: 2px solid #3fb950; border-radius: 50%; box-shadow: 0 0 8px rgba(63,185,80,0.6); transform: translate(-50%, -50%); pointer-events: none; }
         .combat-log { position: absolute; top: 25px; right: 30px; width: 340px; max-height: 200px; overflow: hidden; display: flex; flex-direction: column-reverse; gap: 6px; font-size: 13px; color: #ff7b72; text-align: right; background: rgba(0,0,0,0.5); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,123,114,0.3); }
     </style>
@@ -101,13 +102,14 @@
         <p style="color: #8b949e; font-size: 14px;">Choose your primary aircraft for deployment into the battle theater.</p>
         <div class="lineup-grid" id="lineup-grid-slots"></div>
         <button class="to-battle-btn" onclick="confirmDeploymentAndLaunch()">Deploy to Battle</button>
-        <button onclick="closeLineupScreen()" style="background:none; border:none; color:#8b949e; margin-top:15px; cursor:pointer; font-weight:bold; font-family: 'Andale Mono', monospace;">Cancel / Return to Hangar</button>
+        <button onclick="closeLineupSelectionModal()" style="background:none; border:none; color:#8b949e; margin-top:15px; cursor:pointer; font-weight:bold; font-family: 'Andale Mono', monospace;">Cancel / Return to Hangar</button>
     </div>
 
     <div id="canvas-container"></div>
 
     <div id="flight-hud">
         <div class="hud-left-telemetry">
+            <div style="color: #f0883e; margin-bottom: 8px; font-size: 13px;">🌐 ONLINE PILOTS: <span id="hud-online-cnt">1</span></div>
             SPD: <span id="hud-spd">0</span> km/h<br>
             ALT: <span id="hud-alt">0</span> m<br>
             THR: <span id="hud-thr">100</span> %<br>
@@ -124,7 +126,10 @@
 
     <div id="ui-layer">
         <div class="top-bar interactive">
-            <div class="game-logo">THE GREAT BATTLE</div>
+            <div class="game-logo">
+                THE GREAT BATTLE
+                <span class="online-pill">● <span id="hangar-online-cnt">1</span> PILOTS ONLINE</span>
+            </div>
             <div class="nav-tabs">
                 <button id="btn-tab-hangar" class="tab-btn active" onclick="switchHangarTab('hangar')">Hangar</button>
                 <button id="btn-tab-research" class="tab-btn" onclick="switchHangarTab('research')">Research Tree</button>
