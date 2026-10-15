@@ -23,9 +23,9 @@ onDisconnect(playerNetworkRef).remove();
 
 const AIRCRAFT_REGISTRY = [
     { id: "p51", name: "P-51D Mustang", nation: "USA", br: 4.3, speed: 703, turn: 21.5, climb: 14.8, cost: 0, premium: false, color: 0x7a8b99, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "High velocity escort fighter with heavy dive contours." },
-    { id: "f4u", name: "XP-50 Premium", nation: "USA", br: 4.0, speed: 650, turn: 19.0, climb: 22.0, cost: 1200, premium: true, color: 0xd4af37, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "High-climbing interceptor variant featuring exceptional acceleration." },
+    { id: "xp50", name: "XP-50 Premium", nation: "USA", br: 4.0, speed: 650, turn: 19.0, climb: 22.0, cost: 1200, premium: true, color: 0xd4af37, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "High-climbing interceptor variant featuring exceptional acceleration." },
     { id: "bf109", name: "Bf 109 G-6", nation: "GER", br: 4.7, speed: 640, turn: 20.0, climb: 19.5, cost: 0, premium: false, color: 0x545c52, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Interception master with devastating nose cannon configuration." },
-    { id: "fw190", name: "Hitler's P-47", nation: "GER", br: 4.7, speed: 680, turn: 22.5, climb: 16.0, cost: 1600, premium: true, color: 0xd4af37, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Captured heavy fighter utilized for devastating ground strikes." },
+    { id: "p47ger", name: "Hitler's P-47", nation: "GER", br: 4.7, speed: 680, turn: 22.5, climb: 16.0, cost: 1600, premium: true, color: 0xd4af37, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Captured heavy fighter utilized for devastating ground strikes." },
     { id: "yak3", name: "Yak-3 Fighter", nation: "USSR", br: 4.3, speed: 655, turn: 18.5, climb: 18.0, cost: 0, premium: false, color: 0x6e786c, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Light frame configuration optimized for agile dogfights." },
     { id: "spitfire", name: "Spitfire Mk IX", nation: "UK", br: 4.3, speed: 595, turn: 16.0, climb: 16.5, cost: 0, premium: false, color: 0x4d5946, unlocked: true, modelPath: "supermarine_spitfire.glb", desc: "Elliptical wing design giving tighter horizontal turn rates." }
 ];
@@ -46,7 +46,7 @@ const mouseAimCoordinates = { x: 0, y: 0, rawX: 0, rawY: 0 };
 const playerControlInputVectors = { space: false };
 let currentVehicleHP = 100;
 
-// Crew slots mapping per nation
+// Crew slots mapping per nation (USA, GER, USSR, UK)
 let nationLineups = {
     USA: AIRCRAFT_REGISTRY.find(p => p.id === "p51"),
     GER: AIRCRAFT_REGISTRY.find(p => p.id === "bf109"),
@@ -86,6 +86,7 @@ function initializeAppCore() {
     renderActiveFleetSlots();
     renderResearchTreeMatrix();
     updateUIFields();
+    listenToPlayerCount();
 
     setTimeout(() => {
         const loader = document.getElementById('loading-overlay');
@@ -94,6 +95,15 @@ function initializeAppCore() {
     }, 1200);
 
     animateEngineFrame();
+}
+
+function listenToPlayerCount() {
+    onValue(globalMatchRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const count = Object.keys(data).length || 1;
+        document.getElementById('hangar-online-cnt').innerText = count;
+        document.getElementById('hud-online-cnt').innerText = count;
+    });
 }
 
 function loadAircraftModel(plane, callback) {
@@ -152,6 +162,12 @@ window.switchHangarTab = function(tabName) {
 window.onNationDropdownChange = function(nationCode) {
     activeNationFilter = nationCode;
     document.getElementById('hangar-country-indicator').innerText = `Active Nation: ${nationCode}`;
+    if (nationLineups[nationCode]) {
+        activeSelectedAircraft = nationLineups[nationCode];
+    }
+    updateUIFields();
+    updateHangarShowcaseModel();
+    renderActiveFleetSlots();
     renderResearchTreeMatrix();
 };
 
@@ -225,7 +241,6 @@ window.openLineupSelectionModal = function() {
     const grid = document.getElementById('lineup-grid-slots');
     grid.innerHTML = '';
     
-    // Use the aircraft currently assigned to the active nation's crew slot
     const assignedPlane = nationLineups[activeNationFilter] || activeSelectedAircraft;
     lineupSelectedAircraft = assignedPlane;
 
