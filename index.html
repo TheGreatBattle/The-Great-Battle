@@ -13,13 +13,15 @@
       }
     </script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0f14; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #e6edf3; user-select: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Andale+Mono&display=swap');
+
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0f14; font-family: 'Andale Mono', monospace; color: #e6edf3; user-select: none; }
         #canvas-container { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding: 20px; }
         .interactive { pointer-events: auto; }
         
         /* Loading Screen Overlays */
-        #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f14; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
+        #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b0f14; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; font-family: 'Andale Mono', monospace; }
         .spinner { width: 50px; height: 50px; border: 4px solid #30363d; border-top: 4px solid #f0883e; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -30,37 +32,37 @@
         .silver-lions { color: #c9d1d9; } .golden-eagles { color: #f0883e; }
         
         .nav-tabs { display: flex; gap: 8px; margin: 0 auto; }
-        .tab-btn { background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 8px 26px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 13px; border-radius: 4px; transition: all 0.2s; }
+        .tab-btn { background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 8px 26px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 13px; border-radius: 4px; transition: all 0.2s; font-family: 'Andale Mono', monospace; }
         .tab-btn:hover { background: #30363d; color: #fff; }
         .tab-btn.active { background: #da3633; border-color: #f85149; color: white; box-shadow: 0 0 10px rgba(218,54,51,0.4); }
 
         .window-content { display: flex; height: calc(100vh - 220px); margin-top: 15px; gap: 20px; }
         .panel { background: rgba(16, 21, 28, 0.92); border: 1px solid #30363d; border-radius: 8px; padding: 20px; box-sizing: border-box; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); backdrop-filter: blur(6px); }
         .left-spec-card { width: 340px; display: flex; flex-direction: column; gap: 10px; }
-        .plane-title { font-size: 26px; font-weight: 900; color: #fff; text-transform: uppercase; text-shadow: 1px 1px 2px #000; }
+        .plane-title { font-size: 24px; font-weight: 900; color: #fff; text-transform: uppercase; text-shadow: 1px 1px 2px #000; }
         .nation-badge { font-size: 12px; font-weight: bold; background: #1f6feb; padding: 3px 8px; border-radius: 4px; color: #fff; width: fit-content; text-transform: uppercase; }
         .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 4px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
         .stat-val { font-weight: bold; color: #58a6ff; }
         
         .center-display { flex: 1; display: none; }
         .center-display.active { display: block; }
-        .nation-selector { display: flex; gap: 6px; margin-bottom: 15px; }
-        .nation-tab { background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 8px 16px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; }
-        .nation-tab.active { background: #1f6feb; color: #fff; border-color: #388bfd; }
         
-        /* Tech Tree Layout with Premium Column */
+        /* War Thunder Style Tech Tree Layout */
+        .nation-selector { display: flex; gap: 6px; margin-bottom: 15px; align-items: center; }
+        .nation-dropdown { background: #21262d; border: 1px solid #30363d; color: #fff; padding: 8px 16px; font-size: 13px; font-weight: bold; font-family: 'Andale Mono', monospace; cursor: pointer; border-radius: 4px; outline: none; }
+        
         .tech-tree-layout { display: flex; gap: 15px; height: calc(100% - 50px); }
-        .premium-column { width: 220px; background: rgba(240, 136, 62, 0.05); border: 1px solid rgba(240, 136, 62, 0.3); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-        .tech-tree-grid { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-content: start; }
+        .tech-tree-grid { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-content: start; overflow-y: auto; }
+        .premium-column { width: 220px; background: rgba(240, 136, 62, 0.05); border: 1px solid rgba(240, 136, 62, 0.3); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
         
         .research-node { background: linear-gradient(135deg, #21262d, #161b22); border: 1px solid #30363d; padding: 12px; border-radius: 6px; cursor: pointer; transition: transform 0.1s; }
         .research-node:hover { border-color: #8b949e; transform: translateY(-2px); }
         .research-node.unlocked { border-left: 5px solid #238636; }
         .research-node.premium { background: linear-gradient(135deg, #2d2616, #1b1916); border-color: #f0883e; border-left: 5px solid #f0883e; }
-        .research-node.locked { opacity: 0.6; cursor: not-allowed; }
+        .research-node.locked { opacity: 0.6; }
         
-        .battle-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
-        .to-battle-btn { background: linear-gradient(180deg, #f85149, #da3633); border: 2px solid #ff7b72; color: white; font-size: 28px; font-weight: 900; font-style: italic; padding: 16px 80px; cursor: pointer; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); text-transform: uppercase; border-radius: 6px; box-shadow: 0 10px 25px rgba(218,54,51,0.5); transition: transform 0.1s; }
+        .battle-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 15px; }
+        .to-battle-btn { background: linear-gradient(180deg, #f85149, #da3633); border: 2px solid #ff7b72; color: white; font-size: 26px; font-weight: 900; font-style: italic; padding: 16px 70px; cursor: pointer; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); text-transform: uppercase; border-radius: 6px; box-shadow: 0 10px 25px rgba(218,54,51,0.5); transition: transform 0.1s; font-family: 'Andale Mono', monospace; }
         .to-battle-btn:hover { transform: scale(1.03); background: linear-gradient(180deg, #ff7b72, #f85149); }
 
         /* Lineup Selection Modal Screen */
@@ -70,15 +72,16 @@
         .lineup-card:hover { border-color: #8b949e; transform: translateY(-4px); }
         .lineup-card.selected { border-color: #f85149; background: #1f242c; box-shadow: 0 0 15px rgba(248,81,73,0.4); }
 
+        /* Crew Carousel Footer */
         .crew-carousel { width: 100%; height: 105px; background: rgba(13, 17, 23, 0.95); border-top: 2px solid #30363d; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px; box-sizing: border-box; }
-        .crew-slot { width: 170px; height: 100%; background: #161b22; border: 1px solid #30363d; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; border-radius: 6px; transition: border-color 0.2s; }
+        .crew-slot { width: 180px; height: 100%; background: #161b22; border: 1px solid #30363d; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; border-radius: 6px; transition: border-color 0.2s; }
         .crew-slot:hover { border-color: #8b949e; }
         .crew-slot.active { border-color: #f85149; background: #1f242c; box-shadow: 0 0 10px rgba(248,81,73,0.3); }
         .crew-lvl { font-size: 10px; color: #f0883e; font-weight: bold; }
-        .crew-plane { font-size: 13px; font-weight: bold; color: #fff; }
+        .crew-plane { font-size: 12px; font-weight: bold; color: #fff; }
 
         /* Flight HUD */
-        #flight-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; flex-direction: column; justify-content: space-between; padding: 30px; box-sizing: border-box; font-family: 'Courier New', monospace; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; }
+        #flight-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; flex-direction: column; justify-content: space-between; padding: 30px; box-sizing: border-box; font-family: 'Andale Mono', monospace; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; }
         .hud-left-telemetry { color: #3fb950; font-size: 16px; line-height: 1.5em; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 6px; width: fit-content; border: 1px solid rgba(63,185,80,0.3); }
         .hud-center-crosshair { position: absolute; width: 36px; height: 36px; border: 2px solid #3fb950; border-radius: 50%; box-shadow: 0 0 8px rgba(63,185,80,0.6); transform: translate(-50%, -50%); pointer-events: none; }
         .combat-log { position: absolute; top: 25px; right: 30px; width: 340px; max-height: 200px; overflow: hidden; display: flex; flex-direction: column-reverse; gap: 6px; font-size: 13px; color: #ff7b72; text-align: right; background: rgba(0,0,0,0.5); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,123,114,0.3); }
@@ -98,7 +101,7 @@
         <p style="color: #8b949e; font-size: 14px;">Choose your primary aircraft for deployment into the battle theater.</p>
         <div class="lineup-grid" id="lineup-grid-slots"></div>
         <button class="to-battle-btn" onclick="confirmDeploymentAndLaunch()">Deploy to Battle</button>
-        <button onclick="closeLineupScreen()" style="background:none; border:none; color:#8b949e; margin-top:15px; cursor:pointer; font-weight:bold;">Cancel / Return to Hangar</button>
+        <button onclick="closeLineupScreen()" style="background:none; border:none; color:#8b949e; margin-top:15px; cursor:pointer; font-weight:bold; font-family: 'Andale Mono', monospace;">Cancel / Return to Hangar</button>
     </div>
 
     <div id="canvas-container"></div>
@@ -115,7 +118,7 @@
         <div class="combat-log" id="combat-feed"></div>
         <div style="color: #f0883e; font-size: 14px; text-align: center; width: 100%; margin-bottom: 20px;" class="interactive">
             [MOUSE] Aim & Steer | [SPACE] Fire Weapons | [ESC] Leave Match
-            <button onclick="exitToHangar()" style="background: #da3633; color: white; border: none; padding: 6px 14px; cursor: pointer; margin-left: 15px; font-weight: bold; border-radius: 4px;">ABANDON MISSION</button>
+            <button onclick="exitToHangar()" style="background: #da3633; color: white; border: none; padding: 6px 14px; cursor: pointer; margin-left: 15px; font-weight: bold; border-radius: 4px; font-family: 'Andale Mono', monospace;">ABANDON MISSION</button>
         </div>
     </div>
 
@@ -146,16 +149,19 @@
 
             <div id="tab-research" class="panel center-display interactive">
                 <div class="nation-selector">
-                    <button class="nation-tab active" id="ntab-USA" onclick="filterTreeNation('USA')">USA</button>
-                    <button class="nation-tab" id="ntab-GER" onclick="filterTreeNation('GER')">GERMANY</button>
-                    <button class="nation-tab" id="ntab-USSR" onclick="filterTreeNation('USSR')">USSR</button>
-                    <button class="nation-tab" id="ntab-UK" onclick="filterTreeNation('UK')">BRITAIN</button>
+                    <span style="font-size: 12px; font-weight: bold; color: #8b949e; text-transform: uppercase;">Select Nation:</span>
+                    <select id="nation-dropdown-select" class="nation-dropdown" onchange="onNationDropdownChange(this.value)">
+                        <option value="USA">USA (United States)</option>
+                        <option value="GER">GERMANY (Luftwaffe)</option>
+                        <option value="USSR">USSR (Soviet Air Forces)</option>
+                        <option value="UK">BRITAIN (Royal Air Force)</option>
+                    </select>
                 </div>
                 <div class="tech-tree-layout">
+                    <div class="tech-tree-grid" id="tree-grid-target"></div>
                     <div class="premium-column" id="premium-grid-target">
                         <div style="font-size:11px; font-weight:bold; color:#f0883e; text-transform:uppercase; text-align:center;">★ Premium Squadrons</div>
                     </div>
-                    <div class="tech-tree-grid" id="tree-grid-target"></div>
                 </div>
             </div>
 
@@ -164,11 +170,12 @@
                 <p style="color: #8b949e; font-size: 13px;">Upgrade crew capabilities to enhance aircraft turning performance and pilot G-tolerance.</p>
                 <div class="stat-row" style="background: #21262d; padding: 12px; margin-top:15px; border-radius: 6px;">
                     <span>Pilot G-Tolerance & Stamina:</span>
-                    <button onclick="buyCrewUpgrade()" style="background:#238636; border:none; color:white; padding:6px 14px; cursor:pointer; font-weight:bold; border-radius:4px;">Upgrade (-5,000 SL)</button>
+                    <button onclick="buyCrewUpgrade()" style="background:#238636; border:none; color:white; padding:6px 14px; cursor:pointer; font-weight:bold; border-radius:4px; font-family: 'Andale Mono', monospace;">Upgrade (-5,000 SL)</button>
                 </div>
             </div>
 
             <div id="tab-hangar" class="center-display active battle-center">
+                <div id="hangar-country-indicator" style="font-size: 14px; color: #f0883e; font-weight: bold; text-transform: uppercase;">Active Nation: USA</div>
                 <button class="to-battle-btn interactive" onclick="openLineupSelectionModal()">To Battle!</button>
             </div>
         </div>
