@@ -59,9 +59,10 @@
         .crew-lvl { font-size: 10px; color: #f0883e; font-weight: bold; }
         .crew-plane { font-size: 13px; font-weight: bold; color: #fff; }
 
+        /* Flight HUD & Mouse Aim Reticle */
         #flight-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; flex-direction: column; justify-content: space-between; padding: 30px; box-sizing: border-box; font-family: 'Courier New', monospace; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px #000; }
         .hud-left-telemetry { color: #3fb950; font-size: 16px; line-height: 1.5em; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 6px; width: fit-content; border: 1px solid rgba(63,185,80,0.3); }
-        .hud-center-crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; border: 2px solid #3fb950; border-radius: 50%; box-shadow: 0 0 8px rgba(63,185,80,0.6); }
+        .hud-center-crosshair { position: absolute; width: 36px; height: 36px; border: 2px solid #3fb950; border-radius: 50%; box-shadow: 0 0 8px rgba(63,185,80,0.6); transform: translate(-50%, -50%); transition: transform 0.05s linear; pointer-events: none; }
         .combat-log { position: absolute; top: 25px; right: 30px; width: 340px; max-height: 200px; overflow: hidden; display: flex; flex-direction: column-reverse; gap: 6px; font-size: 13px; color: #ff7b72; text-align: right; background: rgba(0,0,0,0.5); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,123,114,0.3); }
     </style>
 </head>
@@ -77,10 +78,10 @@
             WEAPON: <span style="color: #f0883e;">20mm CANNON & MACHINE GUNS</span><br>
             HEALTH: <span id="hud-hp" style="color: #3fb950;">100%</span>
         </div>
-        <div class="hud-center-crosshair"></div>
+        <div class="hud-center-crosshair" id="mouse-aim-reticle"></div>
         <div class="combat-log" id="combat-feed"></div>
         <div style="color: #f0883e; font-size: 14px; text-align: center; width: 100%; margin-bottom: 20px;" class="interactive">
-            [ESC] or Click Button to Leave Match
+            [MOUSE] Aim & Steer | [SPACE] Fire Weapons | [ESC] Leave Match
             <button onclick="exitToHangar()" style="background: #da3633; color: white; border: none; padding: 6px 14px; cursor: pointer; margin-left: 15px; font-weight: bold; border-radius: 4px;">ABANDON MISSION</button>
         </div>
     </div>
