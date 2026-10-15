@@ -10,7 +10,7 @@ const firebaseConfig = {
     storageBucket: "the-great-battle-d675b.firebasestorage.app",
     messagingSenderId: "272825915387",
     appId: "1:272825915387:web:9d59e388e050f57fa99d5e",
-    databaseURL: "https://the-great-battle-d675b-default-rtdb.firebaseio.com"
+    databaseURL: "https://the-great-battle-d675b-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -35,7 +35,7 @@ let activeSelectedAircraft = AIRCRAFT_REGISTRY[0];
 let activeNationFilter = "USA";
 let gameStateMode = "hangar";
 let scene, camera, renderer, hangarPlaneModel, grassTerrainPlane;
-let localFlightPhysicsVehicleObject;
+let localFlightPhysicsVehicleObject = null;
 let loadedPlaneModelsCache = {};
 const onlineNetVisualPlanesMap = {};
 const activeAiBots = [];
@@ -84,9 +84,23 @@ function loadAircraftModel(plane, callback) {
     }
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(plane.modelPath, (gltf) => {
-        loadedPlaneModelsCache[plane.id] = gltf.scene;
-        callback(gltf.scene.clone());
+        const model = gltf.scene;
+        
+        // Auto-scale and center Sketchfab model
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0) {
+            const scaleFactor = 3.0 / maxDim;
+            model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        }
+        box.setFromObject(model);
+        model.position.sub(box.getCenter(new THREE.Vector3()));
+
+        loadedPlaneModelsCache[plane.id] = model;
+        callback(model.clone());
     }, undefined, (error) => {
+        console.warn("GLTF load failed, using fallback box mesh:", error);
         const fallbackBox = new THREE.Mesh(
             new THREE.BoxGeometry(1.2, 0.8, 3.5),
             new THREE.MeshLambertMaterial({ color: plane.color })
